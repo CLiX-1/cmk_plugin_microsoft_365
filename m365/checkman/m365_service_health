@@ -1,0 +1,20 @@
+title: Microsoft 365: Service Health
+agents: microsoft_365
+catalog: cloud/Microsoft
+license: GPLv2
+distribution: Christopher Pommer
+description:
+ This check monitors the service health status from a Microsoft 365
+ tenant. Only licensed services are displayed.
+
+ The service is in state {OK} if there are no service health issues.
+ Depending on the configured check levels for issues of type
+ advisory or incident, it changes to {WARN} or {CRIT}.
+
+ You have to configure the special agent {Microsoft 365}.
+
+item:
+ M365 service name.
+
+discovery:
+ One service is created for each licensed Microsoft 365 service.

@@ -1,0 +1,18 @@
+title: Microsoft 365: Licenses
+agents: microsoft_365
+catalog: cloud/Microsoft
+license: GPLv2
+distribution: Christopher Pommer
+description:
+ This check monitors the active licenses from a Microsoft 365 tenant.
+
+ Depending on the configured check levels, the service is in
+ state {OK}, {WARN} or {CRIT}.
+
+ You have to configure the special agent {Microsoft 365}.
+
+item:
+ M365 license SKU name.
+
+discovery:
+ One service is created for each active Microsoft 365 license.
