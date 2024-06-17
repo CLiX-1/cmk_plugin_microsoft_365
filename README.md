@@ -1,6 +1,6 @@
 # Checkmk Plugin: Microsoft 365 Special Agent
 
-The Microsoft 365 Special Agent can be integrated into Checkmk.
+The Microsoft 365 Special Agent can be integrated into Checkmk 2.3 or newer.
 
 You can download the .mkp file from releases in this repository to upload it directly to your Checkmk site.
 
