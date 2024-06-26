@@ -52,8 +52,7 @@ def _parameter_form_m365() -> Dictionary:
                     field_size=FieldSize.LARGE,
                     custom_validate=[
                         MatchRegex(
-                            regex="^(?:\{{0,1}(?:[0-9a-fA-F]){8}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){4}-"
-                            "(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){12}\}{0,1})$",
+                            regex="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
                             error_msg=Message("Tenant ID / Directory ID must be in 36-character GUID format."),
                         ),
                         LengthInRange(
@@ -71,8 +70,7 @@ def _parameter_form_m365() -> Dictionary:
                     field_size=FieldSize.LARGE,
                     custom_validate=[
                         MatchRegex(
-                            regex="^(?:\{{0,1}(?:[0-9a-fA-F]){8}-(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){4}-"
-                            "(?:[0-9a-fA-F]){4}-(?:[0-9a-fA-F]){12}\}{0,1})$",
+                            regex="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
                             error_msg=Message("Client ID / Application ID must be in 36-character GUID format."),
                         ),
                         LengthInRange(
