@@ -21,7 +21,7 @@
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from cmk.agent_based.v2 import (
@@ -111,8 +111,8 @@ def check_m365_service_health(item: str, params: Mapping[str, Any], section: Sec
         result_details_list = []
         for issue in service_issues:
             issue_start = issue.get("issue_start")
-            issue_start_timedate_utc = datetime.fromisoformat(issue_start)
-            issue_start_timestamp = issue_start_timedate_utc.timestamp()
+            issue_start_datetime = datetime.fromisoformat(issue_start)
+            issue_start_timestamp = issue_start_datetime.timestamp()
             issue_title = issue.get("issue_title")
             issue_feature = issue.get("issue_feature")
             issue_id = issue.get("issue_id")
