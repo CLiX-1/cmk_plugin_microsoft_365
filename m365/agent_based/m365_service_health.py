@@ -111,7 +111,7 @@ def check_m365_service_health(item: str, params: Mapping[str, Any], section: Sec
         result_details_list = []
         for issue in service_issues:
             issue_start = issue.get("issue_start")
-            issue_start_timedate_utc = (datetime.strptime(issue_start, "%Y-%m-%dT%H:%M:%SZ")).replace(tzinfo=timezone.utc)
+            issue_start_timedate_utc = datetime.fromisoformat(issue_start)
             issue_start_timestamp = issue_start_timedate_utc.timestamp()
             issue_title = issue.get("issue_title")
             issue_feature = issue.get("issue_feature")
