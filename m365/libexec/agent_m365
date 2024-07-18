@@ -84,65 +84,6 @@ def get_access_token(tenant_id, app_id, app_secret, resource_scope):
     return access_token
 
 
-def get_m365_service_health(token):
-    m365_healt_overview_url = "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews/"
-
-    headers = {"Authorization": "Bearer " + token}
-
-    try:
-        m365_health_overview_response = requests.get(m365_healt_overview_url, headers=headers)
-        m365_health_overview_response.raise_for_status()
-    except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get m365 service overview\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(2)
-
-    m365_health_overview = m365_health_overview_response.json().get("value", [])
-
-    m365_health_issues_url = (
-        "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/issues"
-        "?$filter=isResolved eq false"
-        "&$select=service,title,startDateTime,feature,classification,id"
-        "&$orderby=startDateTime desc"
-    )
-
-    try:
-        m365_health_issues_response = requests.get(m365_health_issues_url, headers=headers)
-        m365_health_issues_response.raise_for_status()
-    except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get m365 service issues\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(3)
-
-    m365_health_issues = m365_health_issues_response.json().get("value", [])
-
-    service_list = []
-    for service in m365_health_overview:
-        service_name = service["service"]
-        issue_list = []
-        for issue in m365_health_issues:
-            if service_name == issue["service"]:
-                issue_dict = {
-                    "issue_title": issue.get("title"),
-                    "issue_start": issue.get("startDateTime"),
-                    "issue_feature": issue.get("feature"),
-                    "issue_classification": issue.get("classification"),
-                    "issue_id": issue.get("id"),
-                }
-
-                issue_list.append(issue_dict)
-
-        service_dict = {
-            "service_name": service_name,
-            "service_status": service.get("status"),
-            "service_issues": issue_list,
-        }
-
-        service_list.append(service_dict)
-
-    return service_list
-
-
 def get_m365_licenses(token):
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/subscribedSkus"
@@ -158,7 +99,7 @@ def get_m365_licenses(token):
         print(m365_licenses_response.text)
         sys.stderr.write("CRITICAL | Failed to get m365 licenses\n")
         sys.stderr.write(f"Error: {err}\n")
-        sys.exit(4)
+        sys.exit(2)
 
     m365_licenses = m365_licenses_response.json().get("value", [])
 
@@ -182,6 +123,65 @@ def get_m365_licenses(token):
     return license_list
 
 
+def get_m365_service_health(token):
+    m365_healt_overview_url = "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews"
+
+    headers = {"Authorization": "Bearer " + token}
+
+    try:
+        m365_health_overview_response = requests.get(m365_healt_overview_url, headers=headers)
+        m365_health_overview_response.raise_for_status()
+    except requests.exceptions.RequestException as err:
+        sys.stderr.write("CRITICAL | Failed to get m365 service overview\n")
+        sys.stderr.write(f"Error: {err}\n")
+        sys.exit(3)
+
+    m365_health_overview = m365_health_overview_response.json().get("value", [])
+
+    m365_health_issues_url = (
+        "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/issues"
+        "?$filter=isResolved eq false"
+        "&$select=service,title,startDateTime,feature,classification,id"
+        "&$orderby=startDateTime desc"
+    )
+
+    try:
+        m365_health_issues_response = requests.get(m365_health_issues_url, headers=headers)
+        m365_health_issues_response.raise_for_status()
+    except requests.exceptions.RequestException as err:
+        sys.stderr.write("CRITICAL | Failed to get m365 service issues\n")
+        sys.stderr.write(f"Error: {err}\n")
+        sys.exit(4)
+
+    m365_health_issues = m365_health_issues_response.json().get("value", [])
+
+    service_list = []
+    for service in m365_health_overview:
+        service_name = service["service"]
+        issue_list = []
+        for issue in m365_health_issues:
+            if service_name == issue["service"]:
+                issue_dict = {
+                    "issue_classification": issue.get("classification"),
+                    "issue_feature": issue.get("feature"),
+                    "issue_id": issue.get("id"),
+                    "issue_start": issue.get("startDateTime"),
+                    "issue_title": issue.get("title"),
+                }
+
+                issue_list.append(issue_dict)
+
+        service_dict = {
+            "service_issues": issue_list,
+            "service_name": service_name,
+            "service_status": service.get("status"),
+        }
+
+        service_list.append(service_dict)
+
+    return service_list
+
+
 def main():
     args = parse_arguments()
     tenant_id = args.tenant_id
@@ -195,14 +195,13 @@ def main():
 
     token = get_access_token(tenant_id, app_id, app_secret, resource_scope)
 
-    # if not services_to_monitor or "m365_service_health" in services_to_monitor:
-    if "m365_service_health" in services_to_monitor:
-        print("<<<m365_service_health:sep(0)>>>")
-        print(json.dumps(get_m365_service_health(token)))
-
     if "m365_licenses" in services_to_monitor:
         print("<<<m365_licenses:sep(0)>>>")
         print(json.dumps(get_m365_licenses(token)))
+
+    if "m365_service_health" in services_to_monitor:
+        print("<<<m365_service_health:sep(0)>>>")
+        print(json.dumps(get_m365_service_health(token)))
 
 
 if __name__ == "__main__":

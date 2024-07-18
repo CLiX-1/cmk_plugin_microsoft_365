@@ -103,8 +103,10 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     lic_units_suspended = license["lic_units_suspended"]
     lic_units_warning = license["lic_units_warning"]
 
-    lic_units_consumed_pct = round(lic_units_consumed / lic_units_enabled * 100, 2)
-    lic_units_available = lic_units_enabled - lic_units_consumed
+    lic_units_total = lic_units_enabled + lic_units_warning
+
+    lic_units_consumed_pct = round(lic_units_consumed / lic_units_total * 100, 2)
+    lic_units_available = lic_units_total - lic_units_consumed
 
     result_level = ""
     result_state = State.OK
@@ -116,7 +118,7 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
 
         if params_levels_available[0] == "lic_unit_available_lower_pct":
             levels_consumed_pct = (100 - warning_level, 100 - critical_level)
-            available_percent = lic_units_available / lic_units_enabled * 100
+            available_percent = lic_units_available / lic_units_total * 100
 
             if available_percent < critical_level:
                 result_state = State.CRIT
@@ -128,7 +130,7 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
             )
 
         else:
-            levels_consumed_abs = (lic_units_enabled - warning_level, lic_units_enabled - critical_level)
+            levels_consumed_abs = (lic_units_total - warning_level, lic_units_total - critical_level)
 
             if lic_units_consumed > levels_consumed_abs[1]:
                 result_state = State.CRIT
@@ -138,7 +140,7 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
             result_level = f" (warn/crit below {warning_level}/{critical_level} available)"
 
     result_summary = (
-        f"Consumed: {render.percent(lic_units_consumed_pct)} - {lic_units_consumed} of {lic_units_enabled}"
+        f"Consumed: {render.percent(lic_units_consumed_pct)} - {lic_units_consumed} of {lic_units_total}"
         f", Available: {lic_units_available}"
         f"{result_level}"
         f"{', Warning: ' + str(lic_units_warning) if lic_units_warning > 0 else ''}"
@@ -160,12 +162,12 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
         details=result_details,
     )
 
+    yield Metric(name="m365_licenses_total", value=lic_units_total)
     yield Metric(name="m365_licenses_enabled", value=lic_units_enabled)
     yield Metric(name="m365_licenses_consumed", value=lic_units_consumed, levels=levels_consumed_abs)
     yield Metric(name="m365_licenses_consumed_pct", value=lic_units_consumed_pct, levels=levels_consumed_pct)
     yield Metric(name="m365_licenses_available", value=lic_units_available)
-    if lic_units_warning > 0:
-        yield Metric(name="m365_licenses_warning", value=lic_units_warning + lic_units_enabled)
+    yield Metric(name="m365_licenses_warning", value=lic_units_warning)
 
 
 agent_section_m365_licenses = AgentSection(

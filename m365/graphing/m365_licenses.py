@@ -34,6 +34,13 @@ from cmk.graphing.v1.perfometers import Closed, FocusRange, Perfometer
 UNIT_COUNTER = Unit(DecimalNotation(""), StrictPrecision(0))
 UNIT_PERCENTAGE = Unit(DecimalNotation("%"))
 
+metric_m365_licenses_available = Metric(
+    name="m365_licenses_available",
+    title=Title("Available"),
+    unit=UNIT_COUNTER,
+    color=Color.LIGHT_GRAY,
+)
+
 metric_m365_licenses_consumed = Metric(
     name="m365_licenses_consumed",
     title=Title("Consumed"),
@@ -52,14 +59,14 @@ metric_m365_licenses_enabled = Metric(
     name="m365_licenses_enabled",
     title=Title("Enabled"),
     unit=UNIT_COUNTER,
-    color=Color.DARK_CYAN,
+    color=Color.PURPLE,
 )
 
-metric_m365_licenses_available = Metric(
-    name="m365_licenses_available",
-    title=Title("Available"),
+metric_m365_licenses_total = Metric(
+    name="m365_licenses_total",
+    title=Title("Total (Enabled + Warning)"),
     unit=UNIT_COUNTER,
-    color=Color.LIGHT_GRAY,
+    color=Color.GREEN,
 )
 
 metric_m365_licenses_warning = Metric(
@@ -77,12 +84,12 @@ graph_m365_license_count = Graph(
         "m365_licenses_available",
     ],
     simple_lines=[
+        "m365_licenses_total",
         "m365_licenses_enabled",
         "m365_licenses_warning",
         WarningOf("m365_licenses_consumed"),
         CriticalOf("m365_licenses_consumed"),
     ],
-    optional=["m365_licenses_warning"],
 )
 
 graph_m365_license_usage = Graph(
