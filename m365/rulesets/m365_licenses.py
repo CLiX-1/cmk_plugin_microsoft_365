@@ -38,8 +38,9 @@ def _parameter_form_m365_licenses() -> Dictionary:
     return Dictionary(
         title=Title("Microsoft 365 Licenses"),
         help_text=Help(
-            "Check parameters for the Microsoft 365 licenses. Each SKU can have its own set of parameters. "
-            "To use this service, you need to set up the <b>Microsoft 365</b> special agent."
+            "Check parameters for the Microsoft 365 licenses. Each SKU can have its own set of "
+            "parameters. To use this service, you need to set up the <b>Microsoft 365</b> special "
+            "agent."
         ),
         elements={
             "lic_unit_available_lower": DictElement(
@@ -48,7 +49,8 @@ def _parameter_form_m365_licenses() -> Dictionary:
                     help_text=Help(
                         "Set lower-level thresholds for the number of remaining available "
                         "Microsoft 365 licenses as absolute or percentage values. "
-                        'To ignore the remaining available licenses, Select "Percentage" or "Absolute" and "No levels".'
+                        'To ignore the remaining available licenses, Select "Percentage" or '
+                        '"Absolute" and "No levels".'
                     ),
                     elements=[
                         CascadingSingleChoiceElement(

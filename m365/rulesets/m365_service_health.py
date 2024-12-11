@@ -41,7 +41,8 @@ def _parameter_form_m365_service_health() -> Dictionary:
                 parameter_form=ServiceState(
                     title=Title("Severity level incident"),
                     help_text=Help(
-                        "Set the severity level of the issue type incident. The default severity level is critical."
+                        "Set the severity level of the issue type incident. The default severity "
+                        "level is critical."
                     ),
                     prefill=DefaultValue(2),
                 ),
@@ -50,7 +51,8 @@ def _parameter_form_m365_service_health() -> Dictionary:
                 parameter_form=ServiceState(
                     title=Title("Severity level advisory"),
                     help_text=Help(
-                        "Set the severity level of the issue type advisory. The default severity level is warning."
+                        "Set the severity level of the issue type advisory. The default severity "
+                        "level is warning."
                     ),
                     prefill=DefaultValue(1),
                 ),

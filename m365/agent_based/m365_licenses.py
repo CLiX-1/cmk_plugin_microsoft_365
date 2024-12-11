@@ -126,11 +126,15 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
                 result_state = State.WARN
 
             result_level = (
-                f" (warn/crit below {render.percent(warning_level)}/{render.percent(critical_level)} available)"
+                f" (warn/crit below {render.percent(warning_level)}/"
+                f"{render.percent(critical_level)} available)"
             )
 
         else:
-            levels_consumed_abs = (lic_units_total - warning_level, lic_units_total - critical_level)
+            levels_consumed_abs = (
+                lic_units_total - warning_level,
+                lic_units_total - critical_level,
+            )
 
             if lic_units_consumed > levels_consumed_abs[1]:
                 result_state = State.CRIT
@@ -140,9 +144,9 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
             result_level = f" (warn/crit below {warning_level}/{critical_level} available)"
 
     result_summary = (
-        f"Consumed: {render.percent(lic_units_consumed_pct)} - {lic_units_consumed} of {lic_units_total}"
-        f", Available: {lic_units_available}"
-        f"{result_level}"
+        f"Consumed: {render.percent(lic_units_consumed_pct)} - "
+        f"{lic_units_consumed} of {lic_units_total}"
+        f", Available: {lic_units_available}{result_level}"
         f"{', Warning: ' + str(lic_units_warning) if lic_units_warning > 0 else ''}"
         f", License state: {lic_state}"
     )
@@ -164,8 +168,12 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
 
     yield Metric(name="m365_licenses_total", value=lic_units_total)
     yield Metric(name="m365_licenses_enabled", value=lic_units_enabled)
-    yield Metric(name="m365_licenses_consumed", value=lic_units_consumed, levels=levels_consumed_abs)
-    yield Metric(name="m365_licenses_consumed_pct", value=lic_units_consumed_pct, levels=levels_consumed_pct)
+    yield Metric(
+        name="m365_licenses_consumed", value=lic_units_consumed, levels=levels_consumed_abs
+    )
+    yield Metric(
+        name="m365_licenses_consumed_pct", value=lic_units_consumed_pct, levels=levels_consumed_pct
+    )
     yield Metric(name="m365_licenses_available", value=lic_units_available)
     yield Metric(name="m365_licenses_warning", value=lic_units_warning)
 
@@ -182,5 +190,7 @@ check_plugin_m365_licenses = CheckPlugin(
     discovery_function=discover_m365_licenses,
     check_function=check_m365_licenses,
     check_ruleset_name="m365_licenses",
-    check_default_parameters={"lic_unit_available_lower": ("lic_unit_available_lower_pct", ("fixed", (10.0, 5.0)))},
+    check_default_parameters={
+        "lic_unit_available_lower": ("lic_unit_available_lower_pct", ("fixed", (10.0, 5.0)))
+    },
 )

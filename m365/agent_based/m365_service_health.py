@@ -84,7 +84,9 @@ def discover_m365_service_health(section: Section) -> DiscoveryResult:
         yield Service(item=group)
 
 
-def check_m365_service_health(item: str, params: Mapping[str, Any], section: Section) -> CheckResult:
+def check_m365_service_health(
+    item: str, params: Mapping[str, Any], section: Section
+) -> CheckResult:
     m365_service = section.get(item)
     if not m365_service:
         return
@@ -118,10 +120,10 @@ def check_m365_service_health(item: str, params: Mapping[str, Any], section: Sec
             issue_id = issue.get("issue_id")
             issue_classification = issue.get("issue_classification").capitalize()
             issue_details = (
-                f"[{render.datetime(issue_start_timestamp)}]"
-                f"\\n - Type: {issue_classification}"
-                f"\\n - Feature: {issue_feature}"
-                f"\\n - Title: {issue_title} ({issue_id})"
+                f"Start time: {render.datetime(issue_start_timestamp)}"
+                f"\n - Type: {issue_classification}"
+                f"\n - Feature: {issue_feature}"
+                f"\n - Title: {issue_title} ({issue_id})"
             )
             result_details_list.append(issue_details)
 
@@ -139,8 +141,14 @@ def check_m365_service_health(item: str, params: Mapping[str, Any], section: Sec
             summary="No open issues",
         )
 
-    yield Metric(name="m365_service_health_count_incident", value=issue_classification_dict.get("incident", 0))
-    yield Metric(name="m365_service_health_count_advisory", value=issue_classification_dict.get("advisory", 0))
+    yield Metric(
+        name="m365_service_health_count_incident",
+        value=issue_classification_dict.get("incident", 0),
+    )
+    yield Metric(
+        name="m365_service_health_count_advisory",
+        value=issue_classification_dict.get("advisory", 0),
+    )
 
 
 agent_section_m365_service_health = AgentSection(
