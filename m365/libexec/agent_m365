@@ -26,6 +26,7 @@ from pathlib import Path
 import requests
 
 import cmk.utils.password_store
+from cmk.utils.http_proxy_config import deserialize_http_proxy_config
 
 
 def parse_arguments():
@@ -49,6 +50,14 @@ def parse_arguments():
         help="The client secret from the Microsoft Entra app registration.",
     )
     parser.add_argument(
+        "--proxy",
+        required=False,
+        help=(
+            "HTTP proxy used to connect to the MS Graph API. If not set, the environment settings "
+            "will be used."
+        ),
+    )
+    parser.add_argument(
         "--services-to-monitor",
         dest="services_to_monitor",
         required=False,
@@ -58,7 +67,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def get_access_token(tenant_id, app_id, app_secret, resource_scope):
+def get_access_token(tenant_id, app_id, app_secret, resource_scope, proxy):
     token_url = "https://login.microsoftonline.com/" + tenant_id + "/oauth2/v2.0/token"
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
@@ -71,7 +80,9 @@ def get_access_token(tenant_id, app_id, app_secret, resource_scope):
     }
 
     try:
-        api_response = requests.post(token_url, headers=headers, data=body)
+        api_response = requests.post(
+            token_url, headers=headers, data=body, proxies=proxy.to_requests_proxies()
+        )
         api_response.raise_for_status()
     except requests.exceptions.RequestException as err:
         sys.stderr.write("CRITICAL | Failed to get access token\n")
@@ -84,7 +95,39 @@ def get_access_token(tenant_id, app_id, app_secret, resource_scope):
     return access_token
 
 
-def get_m365_licenses(token):
+def get_m365_group_based_licensing(token, proxy):
+    m365_licenses_url = (
+        "https://graph.microsoft.com/v1.0/groups?$filter=hasMembersWithLicenseErrors+eq+true"
+        "&$select=displayName,id"
+    )
+
+    headers = {"Authorization": "Bearer " + token}
+
+    try:
+        m365_group_based_licensing_response = requests.get(
+            m365_licenses_url, headers=headers, proxies=proxy.to_requests_proxies()
+        )
+        m365_group_based_licensing_response.raise_for_status()
+    except requests.exceptions.RequestException as err:
+        sys.stderr.write("CRITICAL | Failed to get m365 group-based licensing errors\n")
+        sys.stderr.write(f"Error: {err}\n")
+        sys.exit(2)
+
+    m365_groups = m365_group_based_licensing_response.json().get("value", [])
+
+    group_list = []
+    for group in m365_groups:
+        license_dict = {
+            "group_id": group["id"],
+            "group_name": group["displayName"],
+        }
+
+        group_list.append(license_dict)
+
+    return group_list
+
+
+def get_m365_licenses(token, proxy):
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/subscribedSkus"
         "?$select=skuId,skuPartNumber,capabilityStatus,consumedUnits,prepaidUnits"
@@ -93,13 +136,14 @@ def get_m365_licenses(token):
     headers = {"Authorization": "Bearer " + token}
 
     try:
-        m365_licenses_response = requests.get(m365_licenses_url, headers=headers)
+        m365_licenses_response = requests.get(
+            m365_licenses_url, headers=headers, proxies=proxy.to_requests_proxies()
+        )
         m365_licenses_response.raise_for_status()
     except requests.exceptions.RequestException as err:
-        print(m365_licenses_response.text)
         sys.stderr.write("CRITICAL | Failed to get m365 licenses\n")
         sys.stderr.write(f"Error: {err}\n")
-        sys.exit(2)
+        sys.exit(3)
 
     m365_licenses = m365_licenses_response.json().get("value", [])
 
@@ -123,18 +167,22 @@ def get_m365_licenses(token):
     return license_list
 
 
-def get_m365_service_health(token):
-    m365_healt_overview_url = "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews"
+def get_m365_service_health(token, proxy):
+    m365_healt_overview_url = (
+        "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews"
+    )
 
     headers = {"Authorization": "Bearer " + token}
 
     try:
-        m365_health_overview_response = requests.get(m365_healt_overview_url, headers=headers)
+        m365_health_overview_response = requests.get(
+            m365_healt_overview_url, headers=headers, proxies=proxy.to_requests_proxies()
+        )
         m365_health_overview_response.raise_for_status()
     except requests.exceptions.RequestException as err:
         sys.stderr.write("CRITICAL | Failed to get m365 service overview\n")
         sys.stderr.write(f"Error: {err}\n")
-        sys.exit(3)
+        sys.exit(4)
 
     m365_health_overview = m365_health_overview_response.json().get("value", [])
 
@@ -146,12 +194,14 @@ def get_m365_service_health(token):
     )
 
     try:
-        m365_health_issues_response = requests.get(m365_health_issues_url, headers=headers)
+        m365_health_issues_response = requests.get(
+            m365_health_issues_url, headers=headers, proxies=proxy.to_requests_proxies()
+        )
         m365_health_issues_response.raise_for_status()
     except requests.exceptions.RequestException as err:
         sys.stderr.write("CRITICAL | Failed to get m365 service issues\n")
         sys.stderr.write(f"Error: {err}\n")
-        sys.exit(4)
+        sys.exit(5)
 
     m365_health_issues = m365_health_issues_response.json().get("value", [])
 
@@ -186,6 +236,7 @@ def main():
     args = parse_arguments()
     tenant_id = args.tenant_id
     app_id = args.app_id
+    proxy = deserialize_http_proxy_config(args.proxy)
     services_to_monitor = args.services_to_monitor.split(",") if args.services_to_monitor else None
 
     pw_id, pw_path = args.app_secret.split(":")
@@ -193,15 +244,19 @@ def main():
 
     resource_scope = "https://graph.microsoft.com/.default"
 
-    token = get_access_token(tenant_id, app_id, app_secret, resource_scope)
+    token = get_access_token(tenant_id, app_id, app_secret, resource_scope, proxy)
+
+    if "m365_group_based_licensing" in services_to_monitor:
+        print("<<<m365_group_based_licensing:sep(0)>>>")
+        print(json.dumps(get_m365_group_based_licensing(token, proxy)))
 
     if "m365_licenses" in services_to_monitor:
         print("<<<m365_licenses:sep(0)>>>")
-        print(json.dumps(get_m365_licenses(token)))
+        print(json.dumps(get_m365_licenses(token, proxy)))
 
     if "m365_service_health" in services_to_monitor:
         print("<<<m365_service_health:sep(0)>>>")
-        print(json.dumps(get_m365_service_health(token)))
+        print(json.dumps(get_m365_service_health(token, proxy)))
 
 
 if __name__ == "__main__":

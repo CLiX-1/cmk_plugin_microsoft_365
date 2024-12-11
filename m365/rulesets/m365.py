@@ -27,6 +27,7 @@ from cmk.rulesets.v1.form_specs import (
     MultipleChoice,
     MultipleChoiceElement,
     Password,
+    Proxy,
     String,
 )
 from cmk.rulesets.v1.form_specs.validators import LengthInRange, MatchRegex
@@ -52,12 +53,17 @@ def _parameter_form_m365() -> Dictionary:
                     field_size=FieldSize.LARGE,
                     custom_validate=[
                         MatchRegex(
-                            regex="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-                            error_msg=Message("Tenant ID / Directory ID must be in 36-character GUID format."),
+                            regex="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+                            "[0-9a-fA-F]{12}$",
+                            error_msg=Message(
+                                "Tenant ID / Directory ID must be in 36-character GUID format."
+                            ),
                         ),
                         LengthInRange(
                             min_value=36,
-                            error_msg=Message("Tenant ID / Directory ID must be in 36-character GUID format."),
+                            error_msg=Message(
+                                "Tenant ID / Directory ID must be in 36-character GUID format."
+                            ),
                         ),
                     ],
                 ),
@@ -66,16 +72,24 @@ def _parameter_form_m365() -> Dictionary:
             "app_id": DictElement(
                 parameter_form=String(
                     title=Title("Client ID / Application ID"),
-                    help_text=Help("The ID of the Micrsoft Entra app registration for Microsoft Graph API requests."),
+                    help_text=Help(
+                        "The ID of the Micrsoft Entra app registration for Microsoft Graph API "
+                        "requests."
+                    ),
                     field_size=FieldSize.LARGE,
                     custom_validate=[
                         MatchRegex(
-                            regex="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
-                            error_msg=Message("Client ID / Application ID must be in 36-character GUID format."),
+                            regex="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+                            "[0-9a-fA-F]{12}$",
+                            error_msg=Message(
+                                "Client ID / Application ID must be in 36-character GUID format."
+                            ),
                         ),
                         LengthInRange(
                             min_value=36,
-                            error_msg=Message("Client ID / Application ID must be in 36-character GUID format."),
+                            error_msg=Message(
+                                "Client ID / Application ID must be in 36-character GUID format."
+                            ),
                         ),
                     ],
                 ),
@@ -88,6 +102,11 @@ def _parameter_form_m365() -> Dictionary:
                 ),
                 required=True,
             ),
+            "proxy": DictElement(
+                parameter_form=Proxy(
+                    title=Title("HTTP proxy"),
+                ),
+            ),
             "services_to_monitor": DictElement(
                 parameter_form=MultipleChoice(
                     title=Title("Microsoft 365 services to monitor"),
@@ -95,28 +114,42 @@ def _parameter_form_m365() -> Dictionary:
                         "Select the Microsoft 365 services that you want to monitor. Ensure "
                         "that you add the required Microsoft Graph API permissions to "
                         "your Microsoft Entra app registration and grant admin consent "
-                        "to them. For M365 service health, you must configure the "
+                        "to them. For M365 group-based licensing, you must configure at "
+                        "least the the <tt>GroupMember.Read.All</tt> API application permission. "
+                        "For M365 service health, you must configure at least the "
                         "<tt>ServiceHealth.Read.All</tt> API application permission. "
-                        "For M365 licenses, you must configure at least the <tt>Organization.Read.All</tt> API "
-                        "application permission."
+                        "For M365 licenses, you must configure at least the "
+                        "<tt>Organization.Read.All</tt> API application permission."
                     ),
                     elements=[
                         MultipleChoiceElement(
-                            name="m365_service_health",
-                            title=Title("M365 service health"),
+                            name="m365_group_based_licensing",
+                            title=Title("M365 group-based licensing"),
                         ),
                         MultipleChoiceElement(
                             name="m365_licenses",
                             title=Title("M365 licenses"),
                         ),
+                        MultipleChoiceElement(
+                            name="m365_service_health",
+                            title=Title("M365 service health"),
+                        ),
                     ],
                     custom_validate=[
                         LengthInRange(
                             min_value=1,
-                            error_msg=Message("Select one or more <b>Microsoft 365 services to monitor</b>"),
+                            error_msg=Message(
+                                "Select one or more <b>Microsoft 365 services to monitor</b>"
+                            ),
                         ),
                     ],
-                    prefill=DefaultValue(["m365_service_health", "m365_licenses"]),
+                    prefill=DefaultValue(
+                        [
+                            "m365_group_based_licensing",
+                            "m365_service_health",
+                            "m365_licenses",
+                        ]
+                    ),
                 ),
                 required=True,
             ),

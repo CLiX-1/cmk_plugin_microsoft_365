@@ -1,0 +1,16 @@
+title: Microsoft 365: Group-based licensing
+agents: microsoft_365
+catalog: cloud/Microsoft
+license: GPLv2
+distribution: Christopher Pommer
+description:
+ This check monitors the Microsoft group-based licensing errors
+ from a Microsoft 365 tenant.
+
+ The service is in state {OK} if there are no group-based licensing errors
+ and in state {CRIT} if there is one or more group-based licensing errors.
+
+ You have to configure the special agent {Microsoft 365}.
+
+discovery:
+ One service is created for group-based licensing errors.

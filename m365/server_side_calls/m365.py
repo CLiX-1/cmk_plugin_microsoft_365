@@ -22,10 +22,13 @@ from collections.abc import Iterator, Sequence
 from pydantic import BaseModel
 
 from cmk.server_side_calls.v1 import (
+    EnvProxy,
     HostConfig,
+    NoProxy,
     Secret,
     SpecialAgentCommand,
     SpecialAgentConfig,
+    URLProxy,
 )
 
 
@@ -33,6 +36,7 @@ class Params(BaseModel):
     tenant_id: str
     app_id: str
     app_secret: Secret
+    proxy: URLProxy | NoProxy | EnvProxy | None = None
     services_to_monitor: Sequence[str] = []
 
 
@@ -51,6 +55,15 @@ def commands_function(
 
     if params.services_to_monitor:
         args += ["--services-to-monitor", ",".join(params.services_to_monitor)]
+
+    if params.proxy:
+        match params.proxy:
+            case URLProxy(url=url):
+                args += ["--proxy", url]
+            case EnvProxy():
+                args += ["--proxy", "FROM_ENVIRONMENT"]
+            case NoProxy():
+                args += ["--proxy", "NO_PROXY"]
 
     yield SpecialAgentCommand(command_arguments=args)
 
