@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
 # Copyright (C) 2024  Christopher Pommer <cp.software@outlook.de>
 
@@ -18,19 +18,26 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
+####################################################################################################
+# Checkmk ruleset to configure the Microsoft 365 special agent.
+
+
 from cmk.rulesets.v1 import Help, Message, Title
 from cmk.rulesets.v1.form_specs import (
     DefaultValue,
     DictElement,
     Dictionary,
     FieldSize,
+    InputHint,
     MultipleChoice,
     MultipleChoiceElement,
     Password,
     Proxy,
     String,
+    TimeMagnitude,
+    TimeSpan,
 )
-from cmk.rulesets.v1.form_specs.validators import LengthInRange, MatchRegex
+from cmk.rulesets.v1.form_specs.validators import LengthInRange, MatchRegex, NumberInRange
 from cmk.rulesets.v1.rule_specs import SpecialAgent, Topic
 
 
@@ -73,7 +80,7 @@ def _parameter_form_m365() -> Dictionary:
                 parameter_form=String(
                     title=Title("Client ID / Application ID"),
                     help_text=Help(
-                        "The ID of the Micrsoft Entra app registration for Microsoft Graph API "
+                        "The App ID of the Micrsoft Entra app registration for Microsoft Graph API "
                         "requests."
                     ),
                     field_size=FieldSize.LARGE,
@@ -105,6 +112,10 @@ def _parameter_form_m365() -> Dictionary:
             "proxy": DictElement(
                 parameter_form=Proxy(
                     title=Title("HTTP proxy"),
+                    help_text=Help(
+                        "The HTTP proxy used to connect to the Microsoft Graph API. If not set, "
+                        "the environment settings will be used."
+                    ),
                 ),
             ),
             "services_to_monitor": DictElement(
@@ -152,6 +163,25 @@ def _parameter_form_m365() -> Dictionary:
                     ),
                 ),
                 required=True,
+            ),
+            "timeout": DictElement(
+                parameter_form=TimeSpan(
+                    title=Title("Timeout for each API request"),
+                    help_text=Help(
+                        "Define a custom timeout in seconds to use for each API request. The "
+                        "timeout is used for token request and any service that should be "
+                        "monitored. The default timeout is 10s."
+                    ),
+                    displayed_magnitudes=[TimeMagnitude.SECOND],
+                    prefill=InputHint(10.0),
+                    custom_validate=[
+                        NumberInRange(
+                            min_value=3,
+                            max_value=600,
+                            error_msg=Message("The timeout must be between 3s and 600s."),
+                        ),
+                    ],
+                ),
             ),
         },
     )

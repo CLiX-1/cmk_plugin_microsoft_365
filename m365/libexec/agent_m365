@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
 # Copyright (C) 2024  Christopher Pommer <cp.software@outlook.de>
 
@@ -22,30 +22,26 @@ import sys
 import argparse
 import json
 from pathlib import Path
+from typing import List, Optional, TypedDict
 
 import requests
 
 import cmk.utils.password_store
-from cmk.utils.http_proxy_config import deserialize_http_proxy_config
+from cmk.utils.http_proxy_config import deserialize_http_proxy_config, HTTPProxyConfig
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--tenant-id",
-        dest="tenant_id",
-        required=True,
-        help="The unique ID from the Microsoft Entra tenant.",
+        "--tenant-id", required=True, help="The unique ID from the Microsoft Entra tenant."
     )
     parser.add_argument(
         "--app-id",
-        dest="app_id",
         required=True,
-        help="The ID of the Micrsoft Entra app registration for Microsoft Graph API requests.",
+        help="The App ID of the Microsoft Entra app registration for Microsoft Graph API requests.",
     )
     parser.add_argument(
         "--app-secret",
-        dest="app_secret",
         required=True,
         help="The client secret from the Microsoft Entra app registration.",
     )
@@ -53,22 +49,52 @@ def parse_arguments():
         "--proxy",
         required=False,
         help=(
-            "HTTP proxy used to connect to the MS Graph API. If not set, the environment settings "
-            "will be used."
+            "The HTTP proxy used to connect to the Microsoft Graph API. If not set, the "
+            "environment settings will be used."
         ),
     )
     parser.add_argument(
         "--services-to-monitor",
-        dest="services_to_monitor",
         required=False,
-        help="Microsoft 365 services that you want to monitor.",
+        help=(
+            "Comma-separated list of Microsoft Entra services you want to monitor. "
+            "Possible values: m365_group_based_licensing, m365_service_health, m365_licenses"
+        ),
+    )
+    parser.add_argument(
+        "--timeout",
+        required=False,
+        type=float,
+        default=10.0,
+        help=(
+            "Define a custom timeout in seconds to use for each API request. The "
+            "timeout is used for token request and any service that should be "
+            "monitored. The default timeout is 10s."
+        ),
     )
 
     return parser.parse_args()
 
 
-def get_access_token(tenant_id, app_id, app_secret, resource_scope, proxy):
-    token_url = "https://login.microsoftonline.com/" + tenant_id + "/oauth2/v2.0/token"
+def handle_error(err: Exception, context: str = "", exit_code: int = 1) -> None:
+    if err.response and err.response.text:
+        sys.stderr.write(
+            f"{err}\n\nResponse: {getattr(err.response, 'text', '---')}\n\n{context}\n"
+        )
+    else:
+        sys.stderr.write(f"{err}\n\n{context}\n")
+    sys.exit(exit_code)
+
+
+def get_access_token(
+    tenant_id: str,
+    app_id: str,
+    app_secret: str,
+    resource_scope: str,
+    timeout: float,
+    proxy: Optional[HTTPProxyConfig],
+) -> str:
+    token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
@@ -81,13 +107,23 @@ def get_access_token(tenant_id, app_id, app_secret, resource_scope, proxy):
 
     try:
         api_response = requests.post(
-            token_url, headers=headers, data=body, proxies=proxy.to_requests_proxies()
+            token_url,
+            headers=headers,
+            data=body,
+            timeout=timeout,
+            proxies=proxy.to_requests_proxies(),
         )
         api_response.raise_for_status()
+    except requests.exceptions.Timeout as err:
+        handle_error(
+            err,
+            f"Timeout while getting access token ({int(timeout)}s).",
+            11,
+        )
     except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get access token\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(1)
+        handle_error(
+            err, "Failed to get access token. Please check your connection configuration.", 1
+        )
 
     api_response_json = api_response.json()
     access_token = api_response_json["access_token"]
@@ -95,7 +131,14 @@ def get_access_token(tenant_id, app_id, app_secret, resource_scope, proxy):
     return access_token
 
 
-def get_m365_group_based_licensing(token, proxy):
+class Group(TypedDict):
+    group_id: str
+    group_name: str
+
+
+def get_m365_group_based_licensing(
+    token: str, timeout: float, proxy: Optional[HTTPProxyConfig]
+) -> List[Group]:
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/groups?$filter=hasMembersWithLicenseErrors+eq+true"
         "&$select=displayName,id"
@@ -105,13 +148,22 @@ def get_m365_group_based_licensing(token, proxy):
 
     try:
         m365_group_based_licensing_response = requests.get(
-            m365_licenses_url, headers=headers, proxies=proxy.to_requests_proxies()
+            m365_licenses_url, headers=headers, timeout=timeout, proxies=proxy.to_requests_proxies()
         )
         m365_group_based_licensing_response.raise_for_status()
+    except requests.exceptions.Timeout as err:
+        handle_error(
+            err,
+            f"Timeout while getting M365 geoup-based licensing errors ({int(timeout)}s).",
+            12,
+        )
     except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get m365 group-based licensing errors\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(2)
+        handle_error(
+            err,
+            "Failed to get M365 group-based licensing errors. Please check your application "
+            "permissions.",
+            2,
+        )
 
     m365_groups = m365_group_based_licensing_response.json().get("value", [])
 
@@ -127,7 +179,20 @@ def get_m365_group_based_licensing(token, proxy):
     return group_list
 
 
-def get_m365_licenses(token, proxy):
+class License(TypedDict):
+    lic_sku_id: str
+    lic_sku_name: str
+    lic_state: str
+    lic_units_consumed: int
+    lic_units_enabled: int
+    lic_units_lockedout: int
+    lic_units_suspended: int
+    lic_units_warning: int
+
+
+def get_m365_licenses(
+    token: str, timeout: float, proxy: Optional[HTTPProxyConfig]
+) -> List[License]:
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/subscribedSkus"
         "?$select=skuId,skuPartNumber,capabilityStatus,consumedUnits,prepaidUnits"
@@ -137,13 +202,21 @@ def get_m365_licenses(token, proxy):
 
     try:
         m365_licenses_response = requests.get(
-            m365_licenses_url, headers=headers, proxies=proxy.to_requests_proxies()
+            m365_licenses_url, headers=headers, timeout=timeout, proxies=proxy.to_requests_proxies()
         )
         m365_licenses_response.raise_for_status()
+    except requests.exceptions.Timeout as err:
+        handle_error(
+            err,
+            f"Timeout while getting M365 licenses ({int(timeout)}s).",
+            13,
+        )
     except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get m365 licenses\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(3)
+        handle_error(
+            err,
+            "Failed to get M365 licenses. Please check your application permissions.",
+            3,
+        )
 
     m365_licenses = m365_licenses_response.json().get("value", [])
 
@@ -167,7 +240,23 @@ def get_m365_licenses(token, proxy):
     return license_list
 
 
-def get_m365_service_health(token, proxy):
+class ServiceIssue(TypedDict):
+    issue_title: str
+    issue_start: str
+    issue_feature: str
+    issue_classification: str
+    issue_id: str
+
+
+class MicrosoftService(TypedDict):
+    service_name: str
+    service_status: str
+    service_issues: List[ServiceIssue]
+
+
+def get_m365_service_health(
+    token: str, timeout: float, proxy: Optional[HTTPProxyConfig]
+) -> List[MicrosoftService]:
     m365_healt_overview_url = (
         "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews"
     )
@@ -176,13 +265,25 @@ def get_m365_service_health(token, proxy):
 
     try:
         m365_health_overview_response = requests.get(
-            m365_healt_overview_url, headers=headers, proxies=proxy.to_requests_proxies()
+            m365_healt_overview_url,
+            headers=headers,
+            timeout=timeout,
+            proxies=proxy.to_requests_proxies(),
         )
         m365_health_overview_response.raise_for_status()
+    except requests.exceptions.Timeout as err:
+        handle_error(
+            err,
+            f"Timeout while getting M365 service health overview ({int(timeout)}s).",
+            14,
+        )
     except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get m365 service overview\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(4)
+        handle_error(
+            err,
+            "Failed to get M365 service health overview. Please check your application "
+            "permissions.",
+            4,
+        )
 
     m365_health_overview = m365_health_overview_response.json().get("value", [])
 
@@ -195,13 +296,24 @@ def get_m365_service_health(token, proxy):
 
     try:
         m365_health_issues_response = requests.get(
-            m365_health_issues_url, headers=headers, proxies=proxy.to_requests_proxies()
+            m365_health_issues_url,
+            headers=headers,
+            timeout=timeout,
+            proxies=proxy.to_requests_proxies(),
         )
         m365_health_issues_response.raise_for_status()
+    except requests.exceptions.Timeout as err:
+        handle_error(
+            err,
+            f"Timeout while getting M365 service issues ({int(timeout)}s).",
+            15,
+        )
     except requests.exceptions.RequestException as err:
-        sys.stderr.write("CRITICAL | Failed to get m365 service issues\n")
-        sys.stderr.write(f"Error: {err}\n")
-        sys.exit(5)
+        handle_error(
+            err,
+            "Failed to get M365 service issues. Please check your application permissions.",
+            5,
+        )
 
     m365_health_issues = m365_health_issues_response.json().get("value", [])
 
@@ -238,25 +350,26 @@ def main():
     app_id = args.app_id
     proxy = deserialize_http_proxy_config(args.proxy)
     services_to_monitor = args.services_to_monitor.split(",") if args.services_to_monitor else None
+    timeout = args.timeout
 
     pw_id, pw_path = args.app_secret.split(":")
     app_secret = cmk.utils.password_store.lookup(Path(pw_path), pw_id)
 
     resource_scope = "https://graph.microsoft.com/.default"
 
-    token = get_access_token(tenant_id, app_id, app_secret, resource_scope, proxy)
+    token = get_access_token(tenant_id, app_id, app_secret, resource_scope, timeout, proxy)
 
     if "m365_group_based_licensing" in services_to_monitor:
         print("<<<m365_group_based_licensing:sep(0)>>>")
-        print(json.dumps(get_m365_group_based_licensing(token, proxy)))
+        print(json.dumps(get_m365_group_based_licensing(token, timeout, proxy)))
 
     if "m365_licenses" in services_to_monitor:
         print("<<<m365_licenses:sep(0)>>>")
-        print(json.dumps(get_m365_licenses(token, proxy)))
+        print(json.dumps(get_m365_licenses(token, timeout, proxy)))
 
     if "m365_service_health" in services_to_monitor:
         print("<<<m365_service_health:sep(0)>>>")
-        print(json.dumps(get_m365_service_health(token, proxy)))
+        print(json.dumps(get_m365_service_health(token, timeout, proxy)))
 
 
 if __name__ == "__main__":
