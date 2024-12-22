@@ -82,13 +82,13 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def handle_error(err: Exception, context: str = "", exit_code: int = 1) -> None:
-    if err.response and err.response.text:
-        sys.stderr.write(
-            f"{err}\n\nResponse: {getattr(err.response, 'text', '---')}\n\n{context}\n"
-        )
-    else:
-        sys.stderr.write(f"{err}\n\n{context}\n")
+def handle_error(err: Exception, context: str, exit_code: int = 1) -> None:
+    err_msg = f"{err}"
+    if getattr(err, "response", None) and err.response.text:
+        err_msg += f"Response: {err.response.text}"
+
+    sys.stderr.write(f"{err_msg}\n\n{context}\n")
+
     sys.exit(exit_code)
 
 
@@ -173,14 +173,13 @@ def get_m365_group_based_licensing(
 
     m365_groups = m365_group_based_licensing_response.json().get("value", [])
 
-    group_list = []
-    for group in m365_groups:
-        license_dict = {
+    group_list = [
+        {
             "group_id": group["id"],
             "group_name": group["displayName"],
         }
-
-        group_list.append(license_dict)
+        for group in m365_groups
+    ]
 
     return group_list
 
@@ -226,22 +225,20 @@ def get_m365_licenses(
 
     m365_licenses = m365_licenses_response.json().get("value", [])
 
-    license_list = []
-    for license in m365_licenses:
-        lic_units = license["prepaidUnits"]
-        if license["capabilityStatus"] in ["Enabled", "Warning"]:
-            license_dict = {
-                "lic_sku_id": license["skuId"],
-                "lic_sku_name": license["skuPartNumber"],
-                "lic_state": license["capabilityStatus"],
-                "lic_units_consumed": license["consumedUnits"],
-                "lic_units_enabled": lic_units["enabled"],
-                "lic_units_lockedout": lic_units["lockedOut"],
-                "lic_units_suspended": lic_units["suspended"],
-                "lic_units_warning": lic_units["warning"],
-            }
-
-            license_list.append(license_dict)
+    license_list = [
+        {
+            "lic_sku_id": license["skuId"],
+            "lic_sku_name": license["skuPartNumber"],
+            "lic_state": license["capabilityStatus"],
+            "lic_units_consumed": license["consumedUnits"],
+            "lic_units_enabled": license["prepaidUnits"]["enabled"],
+            "lic_units_lockedout": license["prepaidUnits"]["lockedOut"],
+            "lic_units_suspended": license["prepaidUnits"]["suspended"],
+            "lic_units_warning": license["prepaidUnits"]["warning"],
+        }
+        for license in m365_licenses
+        if license["capabilityStatus"] in ["Enabled", "Warning"]
+    ]
 
     return license_list
 
@@ -346,6 +343,29 @@ def get_m365_service_health(
         }
 
         service_list.append(service_dict)
+
+    service_dict = {
+        service["service"]: {
+            "service_name": service["service"],
+            "service_status": service.get("status"),
+            "service_issues": [],
+        }
+        for service in m365_health_overview
+    }
+
+    for issue in m365_health_issues:
+        service_name = issue["service"]
+        if service_name in service_dict:
+            issue_dict = {
+                "issue_classification": issue.get("classification"),
+                "issue_feature": issue.get("feature"),
+                "issue_id": issue.get("id"),
+                "issue_start": issue.get("startDateTime"),
+                "issue_title": issue.get("title"),
+            }
+            service_dict[service_name]["service_issues"].append(issue_dict)
+
+    service_list = list(service_dict.values())
 
     return service_list
 
