@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
 # Copyright (C) 2024  Christopher Pommer <cp.software@outlook.de>
 
@@ -18,38 +18,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
-import json
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from typing import Any
-
-from cmk.agent_based.v2 import (
-    AgentSection,
-    CheckPlugin,
-    CheckResult,
-    DiscoveryResult,
-    Metric,
-    render,
-    Result,
-    Service,
-    State,
-    StringTable,
-)
-
-
-@dataclass(frozen=True)
-class LicenseInfo:
-    lic_sku_id: str
-    lic_sku_name: str
-    lic_state: str
-    lic_units_consumed: int
-    lic_units_enabled: int
-    lic_units_lockedout: int
-    lic_units_suspended: int
-    lic_units_warning: int
-
-
-Section = Mapping[str, Sequence[LicenseInfo]]
+####################################################################################################
+# Checkmk check plugin for monitoring the licenses from Microsoft 365.
+# The plugin works with data from the Microsoft 365 Special Agent (m365).
 
 # Example data from special agent:
 # <<<m365_licenses:sep(0)>>>
@@ -78,10 +49,44 @@ Section = Mapping[str, Sequence[LicenseInfo]]
 # ]
 
 
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from cmk.agent_based.v2 import (
+    AgentSection,
+    CheckPlugin,
+    CheckResult,
+    DiscoveryResult,
+    Metric,
+    render,
+    Result,
+    Service,
+    State,
+    StringTable,
+)
+
+
+@dataclass(frozen=True)
+class License:
+    lic_sku_id: str
+    lic_sku_name: str
+    lic_state: str
+    lic_units_consumed: int
+    lic_units_enabled: int
+    lic_units_lockedout: int
+    lic_units_suspended: int
+    lic_units_warning: int
+
+
+Section = Mapping[str, License]
+
+
 def parse_m365_licenses(string_table: StringTable) -> Section:
     parsed = {}
     for item in json.loads("".join(string_table[0])):
-        parsed[item["lic_sku_name"]] = item
+        parsed[item["lic_sku_name"]] = License(**item)
     return parsed
 
 
@@ -95,18 +100,10 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     if not license:
         return
 
-    lic_sku_id = license["lic_sku_id"]
-    lic_state = license["lic_state"]
-    lic_units_consumed = license["lic_units_consumed"]
-    lic_units_enabled = license["lic_units_enabled"]
-    lic_units_lockedout = license["lic_units_lockedout"]
-    lic_units_suspended = license["lic_units_suspended"]
-    lic_units_warning = license["lic_units_warning"]
+    lic_units_total = license.lic_units_enabled + license.lic_units_warning
 
-    lic_units_total = lic_units_enabled + lic_units_warning
-
-    lic_units_consumed_pct = round(lic_units_consumed / lic_units_total * 100, 2)
-    lic_units_available = lic_units_total - lic_units_consumed
+    lic_units_consumed_pct = round(license.lic_units_consumed / lic_units_total * 100, 2)
+    lic_units_available = lic_units_total - license.lic_units_consumed
 
     result_level = ""
     result_state = State.OK
@@ -136,28 +133,28 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
                 lic_units_total - critical_level,
             )
 
-            if lic_units_consumed > levels_consumed_abs[1]:
+            if license.lic_units_consumed > levels_consumed_abs[1]:
                 result_state = State.CRIT
-            elif lic_units_consumed > levels_consumed_abs[0]:
+            elif license.lic_units_consumed > levels_consumed_abs[0]:
                 result_state = State.WARN
 
             result_level = f" (warn/crit below {warning_level}/{critical_level} available)"
 
     result_summary = (
         f"Consumed: {render.percent(lic_units_consumed_pct)} - "
-        f"{lic_units_consumed} of {lic_units_total}"
+        f"{license.lic_units_consumed} of {lic_units_total}"
         f", Available: {lic_units_available}{result_level}"
-        f"{', Warning: ' + str(lic_units_warning) if lic_units_warning > 0 else ''}"
-        f", License state: {lic_state}"
+        f"{', Warning: ' + str(license.lic_units_warning) if license.lic_units_warning > 0 else ''}"
+        f", License state: {license.lic_state}"
     )
 
     result_details = (
-        f"License ID: {lic_sku_id}"
-        f"\n - Enabled (Active): {lic_units_enabled}"
-        f"\n - Consumed (Used): {lic_units_consumed}"
-        f"\n - LockedOut (Canceled): {lic_units_lockedout}"
-        f"\n - Suspended (Inactive): {lic_units_suspended}"
-        f"\n - Warning (In grace period): {lic_units_warning}"
+        f"License ID: {license.lic_sku_id}"
+        f"\n - Enabled (Active): {license.lic_units_enabled}"
+        f"\n - Consumed (Used): {license.lic_units_consumed}"
+        f"\n - LockedOut (Canceled): {license.lic_units_lockedout}"
+        f"\n - Suspended (Inactive): {license.lic_units_suspended}"
+        f"\n - Warning (In grace period): {license.lic_units_warning}"
     )
 
     yield Result(
@@ -167,15 +164,15 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     )
 
     yield Metric(name="m365_licenses_total", value=lic_units_total)
-    yield Metric(name="m365_licenses_enabled", value=lic_units_enabled)
+    yield Metric(name="m365_licenses_enabled", value=license.lic_units_enabled)
     yield Metric(
-        name="m365_licenses_consumed", value=lic_units_consumed, levels=levels_consumed_abs
+        name="m365_licenses_consumed", value=license.lic_units_consumed, levels=levels_consumed_abs
     )
     yield Metric(
         name="m365_licenses_consumed_pct", value=lic_units_consumed_pct, levels=levels_consumed_pct
     )
     yield Metric(name="m365_licenses_available", value=lic_units_available)
-    yield Metric(name="m365_licenses_warning", value=lic_units_warning)
+    yield Metric(name="m365_licenses_warning", value=license.lic_units_warning)
 
 
 agent_section_m365_licenses = AgentSection(

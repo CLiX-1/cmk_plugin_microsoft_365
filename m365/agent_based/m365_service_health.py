@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
 # Copyright (C) 2024  Christopher Pommer <cp.software@outlook.de>
 
@@ -18,34 +18,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
-import json
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Any
-
-from cmk.agent_based.v2 import (
-    AgentSection,
-    CheckPlugin,
-    CheckResult,
-    DiscoveryResult,
-    Metric,
-    render,
-    Result,
-    Service,
-    State,
-    StringTable,
-)
-
-
-@dataclass(frozen=True)
-class ServiceHealth:
-    service_name: str
-    service_status: str
-    service_issues: list
-
-
-Section = Mapping[str, Sequence[ServiceHealth]]
+####################################################################################################
+# Checkmk check plugin for monitoring the service health from Microsoft 365.
+# The plugin works with data from the Microsoft 365 Special Agent (m365).
 
 # Example data from special agent:
 # <<<m365_service_health:sep(0)>>>
@@ -72,10 +47,48 @@ Section = Mapping[str, Sequence[ServiceHealth]]
 # ]
 
 
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, List, TypedDict
+
+from cmk.agent_based.v2 import (
+    AgentSection,
+    CheckPlugin,
+    CheckResult,
+    DiscoveryResult,
+    Metric,
+    render,
+    Result,
+    Service,
+    State,
+    StringTable,
+)
+
+
+class ServiceIssue(TypedDict):
+    issue_title: str
+    issue_start: str
+    issue_feature: str
+    issue_classification: str
+    issue_id: str
+
+
+@dataclass(frozen=True)
+class MicrosoftService:
+    service_name: str
+    service_status: str
+    service_issues: List[ServiceIssue]
+
+
+Section = Mapping[str, MicrosoftService]
+
+
 def parse_m365_service_health(string_table: StringTable) -> Section:
     parsed = {}
     for item in json.loads("".join(string_table[0])):
-        parsed[item["service_name"]] = item
+        parsed[item["service_name"]] = MicrosoftService(**item)
     return parsed
 
 
@@ -91,23 +104,23 @@ def check_m365_service_health(
     if not m365_service:
         return
 
-    service_issues = m365_service["service_issues"]
-    service_status = m365_service["service_status"]
+    service_issues = m365_service.service_issues
 
     issue_classification_dict = {}
     if service_issues:
         severity_list = []
         for issue in service_issues:
-            if issue["issue_classification"] in issue_classification_dict:
-                issue_classification_dict[issue["issue_classification"]] += 1
+            classification = issue["issue_classification"]
+            if classification in issue_classification_dict:
+                issue_classification_dict[classification] += 1
             else:
-                issue_classification_dict[issue["issue_classification"]] = 1
-            severity_list.append(params.get(issue["issue_classification"], 0))
+                issue_classification_dict[classification] = 1
+            severity_list.append(params.get(classification, 0))
 
         result_summary = (
             f"Incident: {issue_classification_dict.get('incident', 0)}, "
             f"Advisory: {issue_classification_dict.get('advisory', 0)}, "
-            f"Status: {service_status}"
+            f"Status: {m365_service.service_status}"
         )
 
         result_details_list = []
@@ -115,15 +128,12 @@ def check_m365_service_health(
             issue_start = issue.get("issue_start")
             issue_start_datetime = datetime.fromisoformat(issue_start)
             issue_start_timestamp = issue_start_datetime.timestamp()
-            issue_title = issue.get("issue_title")
-            issue_feature = issue.get("issue_feature")
-            issue_id = issue.get("issue_id")
-            issue_classification = issue.get("issue_classification").capitalize()
+            issue_classification = issue["issue_classification"].capitalize()
             issue_details = (
                 f"Start time: {render.datetime(issue_start_timestamp)}"
                 f"\n - Type: {issue_classification}"
-                f"\n - Feature: {issue_feature}"
-                f"\n - Title: {issue_title} ({issue_id})"
+                f"\n - Feature: {issue.get('issue_feature')}"
+                f"\n - Title: {issue.get('issue_title')} ({issue.get('issue_id')})"
             )
             result_details_list.append(issue_details)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
 # Copyright (C) 2024  Christopher Pommer <cp.software@outlook.de>
 
@@ -18,29 +18,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
-import json
-from collections.abc import Sequence
-from dataclasses import dataclass
-
-from cmk.agent_based.v2 import (
-    AgentSection,
-    CheckPlugin,
-    CheckResult,
-    DiscoveryResult,
-    Result,
-    Service,
-    State,
-    StringTable,
-)
-
-
-@dataclass(frozen=True)
-class GroupInfo:
-    group_id: str
-    group_name: str
-
-
-Section = Sequence[GroupInfo]
+####################################################################################################
+# Checkmk check plugin for monitoring the group-based licensing errors from Microsoft 365.
+# The plugin works with data from the Microsoft 365 Special Agent (m365).
 
 # Example data from special agent:
 # <<<m365_group_based_licensing:sep(0)>>>
@@ -55,6 +35,31 @@ Section = Sequence[GroupInfo]
 #     },
 #     ...
 # ]
+
+
+import json
+from dataclasses import dataclass
+from typing import List
+
+from cmk.agent_based.v2 import (
+    AgentSection,
+    CheckPlugin,
+    CheckResult,
+    DiscoveryResult,
+    Result,
+    Service,
+    State,
+    StringTable,
+)
+
+
+@dataclass(frozen=True)
+class Group:
+    group_id: str
+    group_name: str
+
+
+Section = List[Group]
 
 
 def parse_m365_group_based_licensing(string_table: StringTable) -> Section:
@@ -80,7 +85,7 @@ def check_m365_group_based_licensing(section: Section) -> CheckResult:
 
     result_details_list = []
     for group in groups:
-        group_details = f"Group name: {group["group_name"]}\n - ID: {group["group_id"]}"
+        group_details = f"Group name: {group['group_name']}\n - ID: {group['group_id']}"
         result_details_list.append(group_details)
 
     result_details = "\n\n".join(result_details_list)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+# -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
 # Copyright (C) 2024  Christopher Pommer <cp.software@outlook.de>
 
@@ -16,6 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
+####################################################################################################
+# Checkmk ruleset to set the thresholds for the Microsoft 365 licenses. The ruleset
+# allows you to set the lower levels for the number of remaining available Microsoft 365 licenses.
+# This ruleset is part of the Microsoft 365 special agent (m365).
 
 
 from cmk.rulesets.v1 import Help, Title
