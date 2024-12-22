@@ -18,6 +18,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
+####################################################################################################
+# This Checkmk plugin (Special Agent) retrieves information from Microsoft 365 using the Microsoft
+# Graph API. The plugin can be used to monitor the group-based licensing, service health and
+# licenses of Microsoft 365 services.
+
+
 import sys
 import argparse
 import json
