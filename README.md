@@ -6,7 +6,7 @@ The Microsoft 365 Special Agent can be integrated into Checkmk 2.3 or newer.
 You can download the .mkp file from releases in this repository to upload it directly to your Checkmk site.
 
 The Plugin provides monitoring of these components:
-- Microsoft 365 Group-Based Licensing.
+- Microsoft 365 Group-Based Licensing
 - Microsoft 365 Licenses
 - Microsoft 365 Service Health
 
@@ -14,8 +14,9 @@ The Plugin provides monitoring of these components:
 
 This Special Agent uses the Microsoft Graph API to collect the monitoring data.
 To access the API, you need a Microsoft Entra Tenant and a Microsoft Entra App Registration with a secret.
+For a configuration guide, see the "Steps to get it working" section.
 
-You need at least these API **application** permissions for your App Registration:
+You need at least these API **application** permissions for your App Registration to use all the checks:
 - *GroupMember.Read.All*
 - *Organization.Read.All*
 - *ServiceHealth.Read.All*
@@ -104,7 +105,8 @@ To find the corresponding product name, go to https://learn.microsoft.com/en-us/
 
 **Endpoint**: *https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/issues*
 - Get all active Microsoft 365 health issues
-  
+
+
 ## Steps to get it working
 
 To use this Checkmk Special Agent, you must configure a Microsoft Entra Application to access the Microsoft Graph API endpoints.
