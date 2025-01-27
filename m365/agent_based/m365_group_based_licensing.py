@@ -73,26 +73,23 @@ def discover_m365_group_based_licensing(section: Section) -> DiscoveryResult:
 
 def check_m365_group_based_licensing(section: Section) -> CheckResult:
     groups = section
-    if not groups:
+    if groups is None:
         yield Result(
             state=State.OK,
             summary="No groups with errors",
         )
-
         return
 
-    result_summary = f"Groups with errors: {len(groups)}"
-
-    result_details_list = []
+    group_details_list = []
     for group in groups:
         group_details = f"Group name: {group['group_name']}\n - ID: {group['group_id']}"
-        result_details_list.append(group_details)
+        group_details_list.append(group_details)
 
-    result_details = "\n\n".join(result_details_list)
+    result_details = "\n\n".join(group_details_list)
 
     yield Result(
         state=State.CRIT,
-        summary=result_summary,
+        summary=f"Groups with errors: {len(groups)}",
         details=result_details,
     )
 

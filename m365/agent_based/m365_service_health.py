@@ -101,7 +101,7 @@ def check_m365_service_health(
     item: str, params: Mapping[str, Any], section: Section
 ) -> CheckResult:
     m365_service = section.get(item)
-    if not m365_service:
+    if m365_service is None:
         return
 
     service_issues = m365_service.service_issues
@@ -129,20 +129,22 @@ def check_m365_service_health(
             issue_start_datetime = datetime.fromisoformat(issue_start)
             issue_start_timestamp = issue_start_datetime.timestamp()
             issue_classification = issue["issue_classification"].capitalize()
-            issue_details = (
-                f"Start time: {render.datetime(issue_start_timestamp)}"
-                f"\n - Type: {issue_classification}"
-                f"\n - Feature: {issue.get('issue_feature')}"
-                f"\n - Title: {issue.get('issue_title')} ({issue.get('issue_id')})"
-            )
+            issue_details_list = [
+                f"Start time: {render.datetime(issue_start_timestamp)}",
+                f" - Type: {issue_classification}",
+                f" - Feature: {issue.get('issue_feature')}",
+                f" - Title: {issue.get('issue_title')} ({issue.get('issue_id')})",
+            ]
+            issue_details = "\n".join(issue_details_list)
+
             result_details_list.append(issue_details)
 
         result_details = "\n\n".join(result_details_list)
 
         yield Result(
             state=State.worst(*severity_list),
-            summary=f"{result_summary}",
-            details=f"{result_details}",
+            summary=result_summary,
+            details=result_details,
         )
 
     else:

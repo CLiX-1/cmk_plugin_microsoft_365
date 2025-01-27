@@ -97,7 +97,7 @@ def discover_m365_licenses(section: Section) -> DiscoveryResult:
 
 def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) -> CheckResult:
     license = section.get(item)
-    if not license:
+    if license is None:
         return
 
     lic_units_total = license.lic_units_enabled + license.lic_units_warning
@@ -148,14 +148,15 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
         f", License state: {license.lic_state}"
     )
 
-    result_details = (
-        f"License ID: {license.lic_sku_id}"
-        f"\n - Enabled (Active): {license.lic_units_enabled}"
-        f"\n - Consumed (Used): {license.lic_units_consumed}"
-        f"\n - LockedOut (Canceled): {license.lic_units_lockedout}"
-        f"\n - Suspended (Inactive): {license.lic_units_suspended}"
-        f"\n - Warning (In grace period): {license.lic_units_warning}"
-    )
+    license_details_list = [
+        f"License ID: {license.lic_sku_id}",
+        f" - Enabled (Active): {license.lic_units_enabled}",
+        f" - Consumed (Used): {license.lic_units_consumed}",
+        f" - LockedOut (Canceled): {license.lic_units_lockedout}",
+        f" - Suspended (Inactive): {license.lic_units_suspended}",
+        f" - Warning (In grace period): {license.lic_units_warning}",
+    ]
+    result_details = "\n".join(license_details_list)
 
     yield Result(
         state=result_state,
