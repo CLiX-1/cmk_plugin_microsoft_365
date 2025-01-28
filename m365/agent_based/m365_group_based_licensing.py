@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8; py-indent-offset: 4; max-line-length: 100 -*-
 
-# Copyright (C) 2025  Christopher Pommer <cp.software@outlook.de>
+# Copyright (C) 2024, 2025  Christopher Pommer <cp.software@outlook.de>
 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -73,7 +73,7 @@ def discover_m365_group_based_licensing(section: Section) -> DiscoveryResult:
 
 def check_m365_group_based_licensing(section: Section) -> CheckResult:
     groups = section
-    if groups is None:
+    if not groups:
         yield Result(
             state=State.OK,
             summary="No groups with errors",
