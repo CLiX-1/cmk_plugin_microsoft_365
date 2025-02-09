@@ -20,7 +20,7 @@
 
 ####################################################################################################
 # Checkmk check plugin for monitoring the licenses from Microsoft 365.
-# The plugin works with data from the Microsoft 365 Special Agent (m365).
+# The plugin works with data from the Microsoft 365 special agent (m365).
 
 # Example data from special agent:
 # <<<m365_licenses:sep(0)>>>
@@ -100,33 +100,52 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     if license is None:
         return
 
+    # Total available licenses are the sum of enabled and warning.
+    # Warning are licenses in a grace period.
     lic_units_total = license.lic_units_enabled + license.lic_units_warning
 
     lic_units_consumed_pct = round(license.lic_units_consumed / lic_units_total * 100, 2)
-    lic_units_available = lic_units_total - license.lic_units_consumed
+
+    # The count of the remaining available licenses will be negative if more licenses are assigned
+    # than total available.
+    lic_units_available_raw = lic_units_total - license.lic_units_consumed
+    # To display the correct remaining available value, the minimum will be 0, if the count is
+    # negative.
+    lic_units_available = max(0, lic_units_available_raw)
+
+    params_levels_available_lower = params["lic_unit_available_lower"]
 
     result_level = ""
     result_state = State.OK
     levels_consumed_abs = (None, None)
     levels_consumed_pct = (None, None)
-    params_levels_available = params["lic_unit_available_lower"]
-    if params_levels_available[1][0] == "fixed":
-        warning_level, critical_level = params_levels_available[1][1]
 
-        if params_levels_available[0] == "lic_unit_available_lower_pct":
+    # If the parameter "Only critical if over-licensed" is configured, then only the
+    # over-assignment of licenses is checked.
+    # Otherwise it will be checked if thresholds are configured.
+    if params_levels_available_lower[0] == "lic_overlicensed":
+        if lic_units_available_raw < 0:
+            result_state = State.CRIT
+    elif params_levels_available_lower[1][1]:
+        # Extract the threshold values from the configured parameters.
+        warning_level, critical_level = params_levels_available_lower[1][1]
+
+        # Decide whether to configure the thresholds as absolute or percentage values.
+        if params_levels_available_lower[0] == "lic_unit_available_lower_pct":
+            # This value is used to display the thresholds on the graphs.
             levels_consumed_pct = (100 - warning_level, 100 - critical_level)
-            available_percent = lic_units_available / lic_units_total * 100
 
-            if available_percent < critical_level:
+            available_pct = lic_units_available_raw / lic_units_total * 100
+
+            if available_pct < critical_level:
                 result_state = State.CRIT
-            elif available_percent < warning_level:
+            elif available_pct < warning_level:
                 result_state = State.WARN
 
             result_level = (
                 f" (warn/crit below {render.percent(warning_level)}/"
                 f"{render.percent(critical_level)} available)"
             )
-
         else:
             levels_consumed_abs = (
                 lic_units_total - warning_level,
@@ -140,6 +159,7 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
 
             result_level = f" (warn/crit below {warning_level}/{critical_level} available)"
 
+    # This content will be used as the check result summary.
     result_summary = (
         f"Consumed: {render.percent(lic_units_consumed_pct)} - "
         f"{license.lic_units_consumed} of {lic_units_total}"
@@ -148,13 +168,14 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
         f", License state: {license.lic_state}"
     )
 
+    # Build a list of license details to be displayed in the check result details.
     license_details_list = [
         f"License ID: {license.lic_sku_id}",
-        f" - Enabled (Active): {license.lic_units_enabled}",
-        f" - Consumed (Used): {license.lic_units_consumed}",
-        f" - LockedOut (Canceled): {license.lic_units_lockedout}",
-        f" - Suspended (Inactive): {license.lic_units_suspended}",
-        f" - Warning (In grace period): {license.lic_units_warning}",
+        f"Enabled (Active): {license.lic_units_enabled}",
+        f"Consumed (Used): {license.lic_units_consumed}",
+        f"LockedOut (Canceled): {license.lic_units_lockedout}",
+        f"Suspended (Inactive): {license.lic_units_suspended}",
+        f"Warning (In grace period): {license.lic_units_warning}",
     ]
     result_details = "\n".join(license_details_list)
 
@@ -167,10 +188,14 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     yield Metric(name="m365_licenses_total", value=lic_units_total)
     yield Metric(name="m365_licenses_enabled", value=license.lic_units_enabled)
     yield Metric(
-        name="m365_licenses_consumed", value=license.lic_units_consumed, levels=levels_consumed_abs
+        name="m365_licenses_consumed",
+        value=license.lic_units_consumed,
+        levels=levels_consumed_abs,
     )
     yield Metric(
-        name="m365_licenses_consumed_pct", value=lic_units_consumed_pct, levels=levels_consumed_pct
+        name="m365_licenses_consumed_pct",
+        value=lic_units_consumed_pct,
+        levels=levels_consumed_pct,
     )
     yield Metric(name="m365_licenses_available", value=lic_units_available)
     yield Metric(name="m365_licenses_warning", value=license.lic_units_warning)

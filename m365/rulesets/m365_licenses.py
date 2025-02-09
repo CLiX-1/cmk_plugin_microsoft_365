@@ -31,12 +31,14 @@ from cmk.rulesets.v1.form_specs import (
     DefaultValue,
     DictElement,
     Dictionary,
+    FixedValue,
     InputHint,
     Integer,
     LevelDirection,
     Percentage,
     SimpleLevels,
 )
+from cmk.rulesets.v1.form_specs.validators import NumberInRange
 from cmk.rulesets.v1.rule_specs import CheckParameters, HostAndItemCondition, Topic
 
 
@@ -51,31 +53,46 @@ def _parameter_form_m365_licenses() -> Dictionary:
         elements={
             "lic_unit_available_lower": DictElement(
                 parameter_form=CascadingSingleChoice(
-                    title=Title("Licenses lower levels"),
+                    title=Title("Levels of remaining licenses"),
                     help_text=Help(
                         "Set lower-level thresholds for the number of remaining available "
                         "Microsoft 365 licenses as absolute or percentage values. "
-                        'To ignore the remaining available licenses, Select "Percentage" or '
-                        '"Absolute" and "No levels".'
+                        'To ignore the remaining available licenses, Select "Lower levels '
+                        'percentage" or "Lower levels absolute" and "No levels". To monitor only '
+                        'license over-assignment, select "Only critical if over-licensed"'
                     ),
                     elements=[
                         CascadingSingleChoiceElement(
                             name="lic_unit_available_lower_pct",
-                            title=Title("Percentage"),
+                            title=Title("Lower levels percentage"),
                             parameter_form=SimpleLevels[float](
-                                form_spec_template=Percentage(),
+                                form_spec_template=Percentage(
+                                    custom_validate=(
+                                        NumberInRange(
+                                            min_value=0.01,
+                                            max_value=100.0,
+                                        ),
+                                    ),
+                                ),
                                 level_direction=LevelDirection.LOWER,
                                 prefill_fixed_levels=InputHint(value=(10.0, 5.0)),
                             ),
                         ),
                         CascadingSingleChoiceElement(
                             name="lic_unit_available_lower_abs",
-                            title=Title("Absolute"),
+                            title=Title("Lower levels absolute"),
                             parameter_form=SimpleLevels[int](
-                                form_spec_template=Integer(),
+                                form_spec_template=Integer(
+                                    custom_validate=(NumberInRange(min_value=1),),
+                                ),
                                 level_direction=LevelDirection.LOWER,
                                 prefill_fixed_levels=InputHint(value=(10, 5)),
                             ),
+                        ),
+                        CascadingSingleChoiceElement(
+                            name="lic_overlicensed",
+                            title=Title("Only critical if over-licensed"),
+                            parameter_form=FixedValue(value=None),
                         ),
                     ],
                     prefill=DefaultValue("lic_unit_available_lower_pct"),
