@@ -20,30 +20,40 @@
 
 ####################################################################################################
 # The graph parameters are part of the Microsoft 365 special agent (m365).
+# These are used for the check "Microsoft 365 Service Health".
 
 
-from cmk.graphing.v1 import graphs, metrics, Title
+from cmk.graphing.v1 import Title
+from cmk.graphing.v1.graphs import Graph, MinimalRange
+from cmk.graphing.v1.metrics import (
+    Color,
+    DecimalNotation,
+    Metric,
+    StrictPrecision,
+    Unit,
+)
+from cmk.graphing.v1.perfometers import Closed, FocusRange, Perfometer, Stacked, Open
 
-UNIT_COUNTER = metrics.Unit(metrics.DecimalNotation(""), metrics.StrictPrecision(0))
+UNIT_COUNTER = Unit(DecimalNotation(""), StrictPrecision(0))
 
-metric_m365_service_health_count_incident = metrics.Metric(
+metric_m365_service_health_count_incident = Metric(
     name="m365_service_health_count_incident",
     title=Title("Incident"),
     unit=UNIT_COUNTER,
-    color=metrics.Color.RED,
+    color=Color.RED,
 )
 
-metric_m365_service_health_count_advisory = metrics.Metric(
+metric_m365_service_health_count_advisory = Metric(
     name="m365_service_health_count_advisory",
     title=Title("Advisory"),
     unit=UNIT_COUNTER,
-    color=metrics.Color.YELLOW,
+    color=Color.YELLOW,
 )
 
-graph_m365_service_health_count = graphs.Graph(
+graph_m365_service_health_count = Graph(
     name="m365_service_health_count",
     title=Title("M365 service issues"),
-    minimal_range=graphs.MinimalRange(0, 5),
+    minimal_range=MinimalRange(0, 5),
     simple_lines=[
         "m365_service_health_count_incident",
         "m365_service_health_count_advisory",
@@ -52,4 +62,24 @@ graph_m365_service_health_count = graphs.Graph(
         "m365_service_health_count_incident",
         "m365_service_health_count_advisory",
     ],
+)
+
+perfometer_m365_service_health_count = Stacked(
+    name="name",
+    lower=Perfometer(
+        name="advisory",
+        focus_range=FocusRange(
+            Closed(0),
+            Open(5),
+        ),
+        segments=["m365_service_health_count_advisory"],
+    ),
+    upper=Perfometer(
+        name="incident",
+        focus_range=FocusRange(
+            Closed(0),
+            Open(5),
+        ),
+        segments=["m365_service_health_count_incident"],
+    ),
 )
