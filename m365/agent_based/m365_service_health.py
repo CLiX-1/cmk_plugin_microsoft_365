@@ -20,7 +20,7 @@
 
 ####################################################################################################
 # Checkmk check plugin for monitoring the service health from Microsoft 365.
-# The plugin works with data from the Microsoft 365 Special Agent (m365).
+# The plugin works with data from the Microsoft 365 special agent (m365).
 
 # Example data from special agent:
 # <<<m365_service_health:sep(0)>>>
@@ -51,7 +51,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List, TypedDict
+from typing import Any, List
 
 from cmk.agent_based.v2 import (
     AgentSection,
@@ -67,7 +67,8 @@ from cmk.agent_based.v2 import (
 )
 
 
-class ServiceIssue(TypedDict):
+@dataclass(frozen=True)
+class ServiceIssue:
     issue_title: str
     issue_start: str
     issue_feature: str
@@ -88,7 +89,12 @@ Section = Mapping[str, MicrosoftService]
 def parse_m365_service_health(string_table: StringTable) -> Section:
     parsed = {}
     for item in json.loads("".join(string_table[0])):
-        parsed[item["service_name"]] = MicrosoftService(**item)
+        service_issues = [ServiceIssue(**issue) for issue in item["service_issues"]]
+        parsed[item["service_name"]] = MicrosoftService(
+            service_name=item["service_name"],
+            service_status=item["service_status"],
+            service_issues=service_issues,
+        )
     return parsed
 
 
@@ -106,34 +112,37 @@ def check_m365_service_health(
 
     service_issues = m365_service.service_issues
 
-    issue_classification_dict = {}
+    # Count the issues grouped by issue type and build the severity_list to calculate the
+    # overall severity level for the service.
+    issue_classification_dict: dict[str, int] = {}
     if service_issues:
         severity_list = []
         for issue in service_issues:
-            classification = issue["issue_classification"]
+            classification = issue.issue_classification
             if classification in issue_classification_dict:
                 issue_classification_dict[classification] += 1
             else:
                 issue_classification_dict[classification] = 1
             severity_list.append(params.get(classification, 0))
 
+        # This content will be used as the check result summary.
         result_summary = (
             f"Incident: {issue_classification_dict.get('incident', 0)}, "
             f"Advisory: {issue_classification_dict.get('advisory', 0)}, "
             f"Status: {m365_service.service_status}"
         )
 
+        # Build a list of health issue details to be displayed in the check result details.
         result_details_list = []
         for issue in service_issues:
-            issue_start = issue.get("issue_start")
-            issue_start_datetime = datetime.fromisoformat(issue_start)
+            issue_start_datetime = datetime.fromisoformat(issue.issue_start)
             issue_start_timestamp = issue_start_datetime.timestamp()
-            issue_classification = issue["issue_classification"].capitalize()
+            issue_classification = issue.issue_classification.capitalize()
             issue_details_list = [
                 f"Start time: {render.datetime(issue_start_timestamp)}",
                 f" - Type: {issue_classification}",
-                f" - Feature: {issue.get('issue_feature')}",
-                f" - Title: {issue.get('issue_title')} ({issue.get('issue_id')})",
+                f" - Feature: {issue.issue_feature}",
+                f" - Title: {issue.issue_title} ({issue.issue_id})",
             ]
             issue_details = "\n".join(issue_details_list)
 

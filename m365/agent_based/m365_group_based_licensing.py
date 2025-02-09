@@ -20,7 +20,7 @@
 
 ####################################################################################################
 # Checkmk check plugin for monitoring the group-based licensing errors from Microsoft 365.
-# The plugin works with data from the Microsoft 365 Special Agent (m365).
+# The plugin works with data from the Microsoft 365 special agent (m365).
 
 # Example data from special agent:
 # <<<m365_group_based_licensing:sep(0)>>>
@@ -30,7 +30,7 @@
 #         "group_name": "Group name 1",
 #     },
 #     {
-#         "group_id": "00000000-0000-0000-0000-000000000000",
+#         "group_id": "00000000-0000-0000-0000-000000000001",
 #         "group_name": "Group name 2",
 #     },
 #     ...
@@ -63,7 +63,9 @@ Section = List[Group]
 
 
 def parse_m365_group_based_licensing(string_table: StringTable) -> Section:
-    parsed = json.loads(string_table[0][0])
+    parsed = []
+    for group in json.loads(string_table[0][0]):
+        parsed.append(Group(**group))
     return parsed
 
 
@@ -73,6 +75,8 @@ def discover_m365_group_based_licensing(section: Section) -> DiscoveryResult:
 
 def check_m365_group_based_licensing(section: Section) -> CheckResult:
     groups = section
+
+    # If section is an empty list, then there are no groups with errors.
     if not groups:
         yield Result(
             state=State.OK,
@@ -80,10 +84,11 @@ def check_m365_group_based_licensing(section: Section) -> CheckResult:
         )
         return
 
+    # Build a list of group details to be displayed in the check result details.
     group_details_list = []
     for group in groups:
-        group_details = f"Group name: {group['group_name']}\n - ID: {group['group_id']}"
-        group_details_list.append(group_details)
+        group_details = [f"Group name: {group.group_name}", f"- ID: {group.group_id}"]
+        group_details_list.append("\n".join(group_details))
 
     result_details = "\n\n".join(group_details_list)
 

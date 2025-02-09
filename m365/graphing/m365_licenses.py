@@ -20,6 +20,7 @@
 
 ####################################################################################################
 # The graph parameters are part of the Microsoft 365 special agent (m365).
+# These are used for the check "Microsoft 365 Licenses".
 
 
 from cmk.graphing.v1 import Title

@@ -160,7 +160,7 @@ def get_m365_group_based_licensing(
     except requests.exceptions.Timeout as err:
         handle_error(
             err,
-            "Timeout while getting M365 geoup-based licensing errors.",
+            "Timeout while getting M365 group-based licensing errors.",
             12,
         )
     except requests.exceptions.RequestException as err:
