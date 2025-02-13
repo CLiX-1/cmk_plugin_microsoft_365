@@ -51,7 +51,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List
+from typing import Any, Dict, List
 
 from cmk.agent_based.v2 import (
     AgentSection,
@@ -110,20 +110,18 @@ def check_m365_service_health(
     if m365_service is None:
         return
 
-    service_issues = m365_service.service_issues
-
     # Count the issues grouped by issue type and build the severity_list to calculate the
     # overall severity level for the service.
-    issue_classification_dict: dict[str, int] = {}
-    if service_issues:
-        severity_list = []
-        for issue in service_issues:
+    issue_classification_dict: Dict[str, int] = {}
+    if m365_service.service_issues:
+        issue_severity_list = []
+        for issue in m365_service.service_issues:
             classification = issue.issue_classification
             if classification in issue_classification_dict:
                 issue_classification_dict[classification] += 1
             else:
                 issue_classification_dict[classification] = 1
-            severity_list.append(params.get(classification, 0))
+            issue_severity_list.append(params.get(classification, 0))
 
         # This content will be used as the check result summary.
         result_summary = (
@@ -134,24 +132,27 @@ def check_m365_service_health(
 
         # Build a list of health issue details to be displayed in the check result details.
         result_details_list = []
-        for issue in service_issues:
-            issue_start_datetime = datetime.fromisoformat(issue.issue_start)
-            issue_start_timestamp = issue_start_datetime.timestamp()
-            issue_classification = issue.issue_classification.capitalize()
-            issue_details_list = [
-                f"Start time: {render.datetime(issue_start_timestamp)}",
-                f" - Type: {issue_classification}",
-                f" - Feature: {issue.issue_feature}",
-                f" - Title: {issue.issue_title} ({issue.issue_id})",
-            ]
-            issue_details = "\n".join(issue_details_list)
+        for issue in m365_service.service_issues:
+            if issue.issue_start:
+                issue_start_timestamp = datetime.fromisoformat(issue.issue_start).timestamp()
+                issue_start_render = render.datetime(issue_start_timestamp)
+            else:
+                issue_start_render = "(Not available)"
 
-            result_details_list.append(issue_details)
+            issue_details_list = "\n".join(
+                [
+                    f"Start time: {issue_start_render}",
+                    f" - Type: {issue.issue_classification.capitalize()}",
+                    f" - Feature: {issue.issue_feature}",
+                    f" - Title: {issue.issue_title} ({issue.issue_id})",
+                ]
+            )
+            result_details_list.append(issue_details_list)
 
         result_details = "\n\n".join(result_details_list)
 
         yield Result(
-            state=State.worst(*severity_list),
+            state=State.worst(*issue_severity_list),
             summary=result_summary,
             details=result_details,
         )

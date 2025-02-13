@@ -53,7 +53,7 @@ def _parameter_form_m365_licenses() -> Dictionary:
         elements={
             "lic_unit_available_lower": DictElement(
                 parameter_form=CascadingSingleChoice(
-                    title=Title("Levels of remaining licenses"),
+                    title=Title("Levels of Remaining Licenses"),
                     help_text=Help(
                         "Set lower-level thresholds for the number of remaining available "
                         "Microsoft 365 licenses as absolute or percentage values. "
@@ -64,7 +64,7 @@ def _parameter_form_m365_licenses() -> Dictionary:
                     elements=[
                         CascadingSingleChoiceElement(
                             name="lic_unit_available_lower_pct",
-                            title=Title("Lower levels percentage"),
+                            title=Title("Lower Levels Percentage"),
                             parameter_form=SimpleLevels[float](
                                 form_spec_template=Percentage(
                                     custom_validate=(
@@ -80,7 +80,7 @@ def _parameter_form_m365_licenses() -> Dictionary:
                         ),
                         CascadingSingleChoiceElement(
                             name="lic_unit_available_lower_abs",
-                            title=Title("Lower levels absolute"),
+                            title=Title("Lower Levels Absolute"),
                             parameter_form=SimpleLevels[int](
                                 form_spec_template=Integer(
                                     custom_validate=(NumberInRange(min_value=1),),
@@ -91,7 +91,7 @@ def _parameter_form_m365_licenses() -> Dictionary:
                         ),
                         CascadingSingleChoiceElement(
                             name="lic_overlicensed",
-                            title=Title("Only critical if over-licensed"),
+                            title=Title("Only Critical if Over-Licensed"),
                             parameter_form=FixedValue(value=None),
                         ),
                     ],
@@ -108,5 +108,5 @@ rule_spec_m365_licenses = CheckParameters(
     title=Title("Microsoft 365 Licenses"),
     parameter_form=_parameter_form_m365_licenses,
     topic=Topic.CLOUD,
-    condition=HostAndItemCondition(item_title=Title("SKU name")),
+    condition=HostAndItemCondition(item_title=Title("SKU")),
 )

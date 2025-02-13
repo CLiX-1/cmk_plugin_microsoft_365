@@ -85,12 +85,9 @@ def check_m365_group_based_licensing(section: Section) -> CheckResult:
         return
 
     # Build a list of group details to be displayed in the check result details.
-    group_details_list = []
-    for group in groups:
-        group_details = [f"Group name: {group.group_name}", f"- ID: {group.group_id}"]
-        group_details_list.append("\n".join(group_details))
-
-    result_details = "\n\n".join(group_details_list)
+    result_details = "\n\n".join(
+        f"Group name: {group.group_name}\n- ID: {group.group_id}" for group in groups
+    )
 
     yield Result(
         state=State.CRIT,

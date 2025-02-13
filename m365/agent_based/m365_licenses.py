@@ -169,15 +169,16 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     )
 
     # Build a list of license details to be displayed in the check result details.
-    license_details_list = [
-        f"License ID: {license.lic_sku_id}",
-        f"Enabled (Active): {license.lic_units_enabled}",
-        f"Consumed (Used): {license.lic_units_consumed}",
-        f"LockedOut (Canceled): {license.lic_units_lockedout}",
-        f"Suspended (Inactive): {license.lic_units_suspended}",
-        f"Warning (In grace period): {license.lic_units_warning}",
-    ]
-    result_details = "\n".join(license_details_list)
+    result_details = "\n".join(
+        [
+            f"License ID: {license.lic_sku_id}",
+            f"Enabled (Active): {license.lic_units_enabled}",
+            f"Consumed (Used): {license.lic_units_consumed}",
+            f"LockedOut (Canceled): {license.lic_units_lockedout}",
+            f"Suspended (Inactive): {license.lic_units_suspended}",
+            f"Warning (In grace period): {license.lic_units_warning}",
+        ]
+    )
 
     yield Result(
         state=result_state,

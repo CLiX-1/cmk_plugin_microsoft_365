@@ -28,7 +28,7 @@ import sys
 import argparse
 import json
 from pathlib import Path
-from typing import List, Optional, TypedDict
+from typing import Dict, List, TypedDict
 
 import requests
 
@@ -84,8 +84,8 @@ def parse_arguments() -> argparse.Namespace:
 
 def handle_error(err: Exception, context: str, exit_code: int = 1) -> None:
     err_msg = f"{err}"
-    if getattr(err, "response", None) and err.response.text:
-        err_msg += f"Response: {err.response.text}"
+    if hasattr(err, "response") and err.response:
+        err_msg += f" Response: {getattr(err.response, 'text', 'No response text')}"
 
     sys.stderr.write(f"{err_msg}\n\n{context}\n")
 
@@ -98,7 +98,7 @@ def get_access_token(
     app_secret: str,
     resource_scope: str,
     timeout: float,
-    proxy: Optional[HTTPProxyConfig],
+    proxy: HTTPProxyConfig,
 ) -> str:
     token_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
 
@@ -112,14 +112,14 @@ def get_access_token(
     }
 
     try:
-        api_response = requests.post(
+        token_response = requests.post(
             token_url,
             headers=headers,
             data=body,
             timeout=timeout,
             proxies=proxy.to_requests_proxies(),
         )
-        api_response.raise_for_status()
+        token_response.raise_for_status()
     except requests.exceptions.Timeout as err:
         handle_error(
             err,
@@ -127,12 +127,20 @@ def get_access_token(
             11,
         )
     except requests.exceptions.RequestException as err:
+        error_message = "Failed to get access token."
+        error_message_details = {
+            400: f"{error_message} Please check tenant ID and client ID.",
+            401: f"{error_message} Please check client secret.",
+            429: f"{error_message} Request has been throttled.",
+        }
+        status_code = getattr(err.response, "status_code", 0)
         handle_error(
-            err, "Failed to get access token. Please check your connection configuration.", 1
+            err,
+            error_message_details.get(status_code, error_message),
+            1,
         )
 
-    api_response_json = api_response.json()
-    access_token = api_response_json["access_token"]
+    access_token = token_response.json()["access_token"]
 
     return access_token
 
@@ -143,14 +151,14 @@ class Group(TypedDict):
 
 
 def get_m365_group_based_licensing(
-    token: str, timeout: float, proxy: Optional[HTTPProxyConfig]
+    token: str, timeout: float, proxy: HTTPProxyConfig
 ) -> List[Group]:
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/groups?$filter=hasMembersWithLicenseErrors+eq+true"
         "&$select=displayName,id"
     )
 
-    headers = {"Authorization": "Bearer " + token}
+    headers = {"Authorization": f"Bearer {token}"}
 
     try:
         m365_group_based_licensing_response = requests.get(
@@ -164,16 +172,24 @@ def get_m365_group_based_licensing(
             12,
         )
     except requests.exceptions.RequestException as err:
+        error_message = "Failed to get M365 group-based licensing errors."
+        error_message_details = {
+            403: (
+                f"{error_message} Please check application API permissions. At least "
+                "GroupMember.Read.All is required."
+            ),
+            429: f"{error_message} Request has been throttled.",
+        }
+        status_code = getattr(err.response, "status_code", 0)
         handle_error(
             err,
-            "Failed to get M365 group-based licensing errors. Please check your application "
-            "permissions.",
+            error_message_details.get(status_code, error_message),
             2,
         )
 
     m365_groups = m365_group_based_licensing_response.json().get("value", [])
 
-    group_list = [
+    group_list: List[Group] = [
         {
             "group_id": group["id"],
             "group_name": group["displayName"],
@@ -195,15 +211,13 @@ class License(TypedDict):
     lic_units_warning: int
 
 
-def get_m365_licenses(
-    token: str, timeout: float, proxy: Optional[HTTPProxyConfig]
-) -> List[License]:
+def get_m365_licenses(token: str, timeout: float, proxy: HTTPProxyConfig) -> List[License]:
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/subscribedSkus"
         "?$select=skuId,skuPartNumber,capabilityStatus,consumedUnits,prepaidUnits"
     )
 
-    headers = {"Authorization": "Bearer " + token}
+    headers = {"Authorization": f"Bearer {token}"}
 
     try:
         m365_licenses_response = requests.get(
@@ -217,15 +231,24 @@ def get_m365_licenses(
             13,
         )
     except requests.exceptions.RequestException as err:
+        error_message = "Failed to get M365 licenses."
+        error_message_details = {
+            403: (
+                f"{error_message} Please check application API permissions. At least "
+                "Organization.Read.All is required."
+            ),
+            429: f"{error_message} Request has been throttled.",
+        }
+        status_code = getattr(err.response, "status_code", 0)
         handle_error(
             err,
-            "Failed to get M365 licenses. Please check your application permissions.",
+            error_message_details.get(status_code, error_message),
             3,
         )
 
     m365_licenses = m365_licenses_response.json().get("value", [])
 
-    license_list = [
+    license_list: List[License] = [
         {
             "lic_sku_id": license["skuId"],
             "lic_sku_name": license["skuPartNumber"],
@@ -258,17 +281,18 @@ class MicrosoftService(TypedDict):
 
 
 def get_m365_service_health(
-    token: str, timeout: float, proxy: Optional[HTTPProxyConfig]
+    token: str, timeout: float, proxy: HTTPProxyConfig
 ) -> List[MicrosoftService]:
-    m365_healt_overview_url = (
-        "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/healthOverviews"
+    m365_health_overview_url = (
+        "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/"
+        "healthOverviews?$select=service,status"
     )
 
-    headers = {"Authorization": "Bearer " + token}
+    headers = {"Authorization": f"Bearer {token}"}
 
     try:
         m365_health_overview_response = requests.get(
-            m365_healt_overview_url,
+            m365_health_overview_url,
             headers=headers,
             timeout=timeout,
             proxies=proxy.to_requests_proxies(),
@@ -281,10 +305,18 @@ def get_m365_service_health(
             14,
         )
     except requests.exceptions.RequestException as err:
+        error_message = "Failed to get M365 service health overview."
+        error_message_details = {
+            403: (
+                f"{error_message} Please check application API permissions. At least "
+                "ServiceHealth.Read.All is required."
+            ),
+            429: f"{error_message} Request has been throttled.",
+        }
+        status_code = getattr(err.response, "status_code", 0)
         handle_error(
             err,
-            "Failed to get M365 service health overview. Please check your application "
-            "permissions.",
+            error_message_details.get(status_code, error_message),
             4,
         )
 
@@ -312,60 +344,46 @@ def get_m365_service_health(
             15,
         )
     except requests.exceptions.RequestException as err:
+        error_message = "Failed to get M365 service issues."
+        error_message_details = {
+            429: f"{error_message} Request has been throttled.",
+        }
+        status_code = getattr(err.response, "status_code", 0)
         handle_error(
             err,
-            "Failed to get M365 service issues. Please check your application permissions.",
+            error_message_details.get(status_code, error_message),
             5,
         )
 
     m365_health_issues = m365_health_issues_response.json().get("value", [])
 
-    service_list = []
-    for service in m365_health_overview:
-        service_name = service["service"]
-        issue_list = []
-        for issue in m365_health_issues:
-            if service_name == issue["service"]:
-                issue_dict = {
-                    "issue_classification": issue.get("classification"),
-                    "issue_feature": issue.get("feature"),
-                    "issue_id": issue.get("id"),
-                    "issue_start": issue.get("startDateTime"),
-                    "issue_title": issue.get("title"),
-                }
-
-                issue_list.append(issue_dict)
-
-        service_dict = {
-            "service_issues": issue_list,
-            "service_name": service_name,
-            "service_status": service.get("status"),
-        }
-
-        service_list.append(service_dict)
-
-    service_dict = {
-        service["service"]: {
-            "service_name": service["service"],
-            "service_status": service.get("status"),
-            "service_issues": [],
-        }
-        for service in m365_health_overview
-    }
-
+    issues_by_service: Dict[str, List[ServiceIssue]] = {}
     for issue in m365_health_issues:
         service_name = issue["service"]
-        if service_name in service_dict:
-            issue_dict = {
-                "issue_classification": issue.get("classification"),
-                "issue_feature": issue.get("feature"),
-                "issue_id": issue.get("id"),
-                "issue_start": issue.get("startDateTime"),
-                "issue_title": issue.get("title"),
-            }
-            service_dict[service_name]["service_issues"].append(issue_dict)
 
-    service_list = list(service_dict.values())
+        if service_name not in issues_by_service:
+            issues_by_service[service_name] = []
+
+        issues_by_service[service_name].append(
+            {
+                "issue_classification": issue["classification"],
+                "issue_feature": issue["feature"],
+                "issue_id": issue["id"],
+                "issue_start": issue["startDateTime"],
+                "issue_title": issue["title"],
+            }
+        )
+
+    service_list: List[MicrosoftService] = []
+    for service in m365_health_overview:
+        service_name = service["service"]
+        service_list.append(
+            {
+                "service_issues": issues_by_service.get(service_name, []),
+                "service_name": service_name,
+                "service_status": service["status"],
+            }
+        )
 
     return service_list
 

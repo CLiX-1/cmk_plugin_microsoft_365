@@ -45,7 +45,7 @@ def _parameter_form_m365_service_health() -> Dictionary:
         elements={
             "incident": DictElement(
                 parameter_form=ServiceState(
-                    title=Title("Severity level incident"),
+                    title=Title("Severity Level Incident"),
                     help_text=Help(
                         "Set the severity level of the issue type incident. The default severity "
                         "level is critical."
@@ -55,7 +55,7 @@ def _parameter_form_m365_service_health() -> Dictionary:
             ),
             "advisory": DictElement(
                 parameter_form=ServiceState(
-                    title=Title("Severity level advisory"),
+                    title=Title("Severity Level Advisory"),
                     help_text=Help(
                         "Set the severity level of the issue type advisory. The default severity "
                         "level is warning."
@@ -72,5 +72,5 @@ rule_spec_m365_service_health = CheckParameters(
     title=Title("Microsoft 365 Service Health"),
     parameter_form=_parameter_form_m365_service_health,
     topic=Topic.CLOUD,
-    condition=HostAndItemCondition(item_title=Title("Service name")),
+    condition=HostAndItemCondition(item_title=Title("M365 Service")),
 )
