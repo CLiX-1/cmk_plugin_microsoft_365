@@ -48,7 +48,7 @@ def _parameter_form_m365() -> Dictionary:
             "This special agent requests data from Microsoft 365 using the Microsoft Graph API. "
             "To monitor these resources, add this rule to a single host. You must configure "
             "a Microsoft Entra app registration. For the required permissions, see the "
-            "help sections under <b>Microsoft 365 Services to monitor</b>. "
+            "help sections under <b>Microsoft 365 Services to Monitor</b>. "
             "You may also want to adjust the query interval with the rule "
             "<b>Normal check interval for service checks</b>."
         ),
@@ -150,7 +150,7 @@ def _parameter_form_m365() -> Dictionary:
                         LengthInRange(
                             min_value=1,
                             error_msg=Message(
-                                "Select one or more <b>Microsoft 365 services to monitor</b>"
+                                "Select one or more <b>Microsoft 365 Services to Monitor</b>"
                             ),
                         ),
                     ],
