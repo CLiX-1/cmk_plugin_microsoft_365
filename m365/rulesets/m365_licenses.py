@@ -17,12 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# Checkmk ruleset to set the thresholds for the Microsoft 365 licenses. The ruleset
-# allows you to set the lower levels for the number of remaining available Microsoft 365 licenses.
-# This ruleset is part of the Microsoft 365 special agent (m365).
-
+# CHECKMK RULESET: Microsoft 365 Licenses (check plug-in)
+#
+# This file defines the check plug-in parameters for the "Microsoft 365 Licenses" check.
+# The check is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
 from cmk.rulesets.v1 import Help, Title
 from cmk.rulesets.v1.form_specs import (
@@ -44,7 +44,7 @@ from cmk.rulesets.v1.rule_specs import CheckParameters, HostAndItemCondition, To
 
 def _parameter_form_m365_licenses() -> Dictionary:
     return Dictionary(
-        title=Title("Microsoft 365 Licenses"),
+        title=Title("Check parameters"),
         help_text=Help(
             "Check parameters for the Microsoft 365 licenses. Each SKU can have its own set of "
             "parameters. To use this service, you need to set up the <b>Microsoft 365</b> special "
@@ -53,18 +53,18 @@ def _parameter_form_m365_licenses() -> Dictionary:
         elements={
             "lic_unit_available_lower": DictElement(
                 parameter_form=CascadingSingleChoice(
-                    title=Title("Levels of Remaining Licenses"),
+                    title=Title("Levels of remaining licenses"),
                     help_text=Help(
                         "Set lower-level thresholds for the number of remaining available "
                         "Microsoft 365 licenses as absolute or percentage values. "
                         'To ignore the remaining available licenses, Select "Lower levels '
-                        'percentage" or "Lower levels absolute" and "No levels". To monitor only '
-                        'license over-assignment, select "Only critical if over-licensed"'
+                        'percentage" or "Lower levels absolute" with "No levels". To monitor only '
+                        'license over-assignment, select <b>Only critical if over-licensed</b>"'
                     ),
                     elements=[
                         CascadingSingleChoiceElement(
                             name="lic_unit_available_lower_pct",
-                            title=Title("Lower Levels Percentage"),
+                            title=Title("Lower levels percentage"),
                             parameter_form=SimpleLevels[float](
                                 form_spec_template=Percentage(
                                     custom_validate=(
@@ -80,7 +80,7 @@ def _parameter_form_m365_licenses() -> Dictionary:
                         ),
                         CascadingSingleChoiceElement(
                             name="lic_unit_available_lower_abs",
-                            title=Title("Lower Levels Absolute"),
+                            title=Title("Lower levels absolute"),
                             parameter_form=SimpleLevels[int](
                                 form_spec_template=Integer(
                                     custom_validate=(NumberInRange(min_value=1),),
@@ -91,7 +91,7 @@ def _parameter_form_m365_licenses() -> Dictionary:
                         ),
                         CascadingSingleChoiceElement(
                             name="lic_overlicensed",
-                            title=Title("Only Critical if Over-Licensed"),
+                            title=Title("Only critical if over-licensed"),
                             parameter_form=FixedValue(value=None),
                         ),
                     ],

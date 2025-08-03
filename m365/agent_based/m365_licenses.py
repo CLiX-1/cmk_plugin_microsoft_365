@@ -17,12 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# Checkmk check plugin for monitoring the licenses from Microsoft 365.
-# The plugin works with data from the Microsoft 365 special agent (m365).
+# CHECKMK CHECK PLUG-IN: Microsoft 365 Licenses
+#
+# This plug-in generates the Checkmk services and determines their status.
+# This file is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
-# Example data from special agent:
+# Example data from special agent (formatted):
 # <<<m365_licenses:sep(0)>>>
 # [
 #     {
@@ -189,14 +191,10 @@ def check_m365_licenses(item: str, params: Mapping[str, Any], section: Section) 
     yield Metric(name="m365_licenses_total", value=lic_units_total)
     yield Metric(name="m365_licenses_enabled", value=license.lic_units_enabled)
     yield Metric(
-        name="m365_licenses_consumed",
-        value=license.lic_units_consumed,
-        levels=levels_consumed_abs,
+        name="m365_licenses_consumed", value=license.lic_units_consumed, levels=levels_consumed_abs
     )
     yield Metric(
-        name="m365_licenses_consumed_pct",
-        value=lic_units_consumed_pct,
-        levels=levels_consumed_pct,
+        name="m365_licenses_consumed_pct", value=lic_units_consumed_pct, levels=levels_consumed_pct
     )
     yield Metric(name="m365_licenses_available", value=lic_units_available)
     yield Metric(name="m365_licenses_warning", value=license.lic_units_warning)

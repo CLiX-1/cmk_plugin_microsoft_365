@@ -1,16 +1,32 @@
-title: Microsoft 365: Group-based licensing
-agents: microsoft_365
-catalog: cloud/Microsoft
+title: Microsoft 365: Group-Based Licensing
+agents: special
+catalog: cloud/microsoft
 license: GPLv2
 distribution: Christopher Pommer
 description:
- This check monitors the Microsoft group-based licensing errors
- from a Microsoft 365 tenant.
+ This check monitors group-based licensing errors within a Microsoft 365 tenant.
+ Group-based licensing in Microsoft 365 allows administrators to assign licenses
+ to Microsoft Entra ID groups instead of individual users, automatically
+ managing license assignments when users are added or removed from groups.
 
- The service is in state {OK} if there are no group-based licensing errors
- and in state {CRIT} if there is one or more group-based licensing errors.
+ The check processes data collected by the {Microsoft 365} special agent, which
+ queries the Microsoft Graph API to identify groups experiencing licensing errors.
 
- You have to configure the special agent {Microsoft 365}.
+ The service operates with two states:
+
+ {OK}: No groups have licensing errors - all group-based license assignments
+ are functioning correctly
+
+ {CRIT}: One or more groups have licensing errors - license assignments may
+ be failing for users in affected groups
+
+ When errors are detected, the service provides detailed information including
+ the group names and their corresponding Microsoft Entra ID group IDs to help
+ administrators identify and resolve licensing issues.
+
+ Prerequisites: You must configure the {Microsoft 365} special agent to collect group-based
+ licensing data from your Microsoft 365 tenant.
 
 discovery:
- One service is created for group-based licensing errors.
+ One service named "M365 group-based licensing" is created automatically to
+ monitor licensing errors across all groups in the Microsoft 365 tenant.

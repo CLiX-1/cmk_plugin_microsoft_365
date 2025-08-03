@@ -17,12 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# Checkmk check plugin for monitoring the group-based licensing errors from Microsoft 365.
-# The plugin works with data from the Microsoft 365 special agent (m365).
+# CHECKMK CHECK PLUG-IN: Microsoft 365 Group-Based Licensing
+#
+# This plug-in generates the Checkmk services and determines their status.
+# This file is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
-# Example data from special agent:
+# Example data from special agent (formatted):
 # <<<m365_group_based_licensing:sep(0)>>>
 # [
 #     {
@@ -39,7 +41,6 @@
 
 import json
 from dataclasses import dataclass
-from typing import List
 
 from cmk.agent_based.v2 import (
     AgentSection,
@@ -59,7 +60,7 @@ class Group:
     group_name: str
 
 
-Section = List[Group]
+Section = list[Group]
 
 
 def parse_m365_group_based_licensing(string_table: StringTable) -> Section:

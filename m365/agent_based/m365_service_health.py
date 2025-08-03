@@ -17,12 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# Checkmk check plugin for monitoring the service health from Microsoft 365.
-# The plugin works with data from the Microsoft 365 special agent (m365).
+# CHECKMK CHECK PLUG-IN: Microsoft 365 Service Health
+#
+# This plug-in generates the Checkmk services and determines their status.
+# This file is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
-# Example data from special agent:
+# Example data from special agent (formatted):
 # <<<m365_service_health:sep(0)>>>
 # [
 #     {
@@ -51,7 +53,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from cmk.agent_based.v2 import (
     AgentSection,
@@ -80,7 +82,7 @@ class ServiceIssue:
 class MicrosoftService:
     service_name: str
     service_status: str
-    service_issues: List[ServiceIssue]
+    service_issues: list[ServiceIssue]
 
 
 Section = Mapping[str, MicrosoftService]
@@ -112,7 +114,7 @@ def check_m365_service_health(
 
     # Count the issues grouped by issue type and build the severity_list to calculate the
     # overall severity level for the service.
-    issue_classification_dict: Dict[str, int] = {}
+    issue_classification_dict: dict[str, int] = {}
     if m365_service.service_issues:
         issue_severity_list = []
         for issue in m365_service.service_issues:

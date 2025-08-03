@@ -1,20 +1,39 @@
 title: Microsoft 365: Service Health
-agents: microsoft_365
-catalog: cloud/Microsoft
+agents: special
+catalog: cloud/microsoft
 license: GPLv2
 distribution: Christopher Pommer
 description:
- This check monitors the service health status from a Microsoft 365
- tenant. Only licensed services are displayed.
+ This check monitors the service health status of licensed Microsoft 365 services
+ within a tenant.
 
- The service is in state {OK} if there are no service health issues.
- Depending on the configured check levels for issues of type
- advisory or incident, it changes to {WARN} or {CRIT}.
+ The check processes data collected by the {Microsoft 365} special agent, which
+ queries the Microsoft Graph API to retrieve current service health information
+ and any active service issues.
 
- You have to configure the special agent {Microsoft 365}.
+ Each monitored service can have multiple active issues, which are classified
+ into different severity types:
+
+ - {Incident}: Critical service disruptions affecting functionality
+
+ - {Advisory}: Service degradations or minor issues with limited impact
+
+ Issue classification thresholds are configurable through check parameters.
+ When issues are present, the service displays counts of incidents and advisories
+ in the summary, along with detailed information including issue titles, affected
+ features, start times, and Microsoft issue IDs.
+
+ Performance metrics track the number of active incidents and advisories for
+ trending and alerting purposes.
+
+ You must configure the {Microsoft 365} special agent to collect service health
+ data from your Microsoft 365 tenant.
 
 item:
- M365 service name.
+ The name of the Microsoft 365 service as reported by the Service Health API.
 
 discovery:
- One service is created for each licensed Microsoft 365 service.
+ One service is created automatically for each licensed Microsoft 365 service
+ found in the tenant. Services are named "M365 health {service_name}" where
+ {service_name} is reported by Microsoft. Only services with
+ active licenses are discovered and monitored.

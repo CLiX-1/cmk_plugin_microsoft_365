@@ -1,37 +1,58 @@
 title: Microsoft 365: Licenses
-agents: microsoft_365
-catalog: cloud/Microsoft
+agents: special
+catalog: cloud/microsoft
 license: GPLv2
 distribution: Christopher Pommer
 description:
- This check monitors the Microsoft licenses (enabled and warning)
- from a Microsoft 365 tenant.
+ This check monitors Microsoft 365 license consumption and availability within
+ a Microsoft 365 tenant. Each license SKU (Stock Keeping Unit) represents a
+ specific Microsoft 365 product or service plan with a defined number of
+ available licenses.
 
- Depending on the configured check levels, the service is in
- state {OK}, {WARN} or {CRIT}.
+ The check processes data collected by the {Microsoft 365} special agent, which
+ queries the Microsoft Graph API to retrieve licensing information for all
+ SKUs in the tenant.
 
- You have to configure the special agent {Microsoft 365}.
+ License monitoring includes tracking consumption percentage and remaining
+ available licenses, with configurable thresholds for warning and critical states:
 
- {enabled:}
- The number of units that are enabled for the active subscription of
+ - {Absolute thresholds}: Alert when available licenses fall below specific numbers
+
+ - {Percentage thresholds}: Alert when available licenses fall below specific percentages
+
+ - {Over-licensing detection}: Alert only when more licenses are consumed than available
+
+ The service displays consumption details, availability status, and license state
+ information. Performance metrics are provided for graphing license usage trends.
+
+ Microsoft 365 licenses have different states:
+
+ {enabled}: The number of units that are enabled for the active subscription of
  the service SKU.
 
- {lockedOut:}
- The number of units that are locked out because the customer canceled
+ {lockedOut}: The number of units that are locked out because the customer canceled
  their subscription of the service SKU.
 
- {suspended:}
- The number of units that are suspended because the subscription of
+ {suspended}: The number of units that are suspended because the subscription of
  the service SKU has been canceled. The units can't be assigned but
  can still be reactivated before they're deleted.
 
- {warning:}
- The number of units that are in warning status. When the subscription
+ {warning}: The number of units that are in warning status. When the subscription
  of the service SKU has expired, the customer has a grace period to
  renew their subscription before it's canceled (moved to a suspended state).
 
+ Total available licenses include both enabled and warning licenses, as warning
+ licenses remain functional during the grace period.
+
+ You must configure the {Microsoft 365} special agent to collect licensing
+ data from your Microsoft 365 tenant.
+
 item:
- M365 license SKU name.
+ The Microsoft 365 license SKU name as reported by the Microsoft Graph API.
+ SKU names are typically internal Microsoft identifiers like "VISIOCLIENT"
+ or "THREAT_INTELLIGENCE".
 
 discovery:
- One service is created for each Microsoft 365 license (enabled and warning).
+ One service is created automatically for each license SKU found in the
+ Microsoft 365 tenant. Services are named "M365 SKU {sku_name}" where
+ {sku_name} is the license SKU identifier.

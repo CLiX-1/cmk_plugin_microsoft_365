@@ -17,12 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# Checkmk ruleset to set the thresholds for the Microsoft 365 service health issues. The ruleset
-# allows you to set the severity level for the incident and advisory issues.
-# This ruleset is part of the Microsoft 365 special agent (m365).
-
+# CHECKMK RULESET: Microsoft 365 Service Health (check plug-in)
+#
+# This file defines the check plug-in parameters for the "Microsoft Service Health" check.
+# The check is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
 from cmk.rulesets.v1 import Help, Title
 from cmk.rulesets.v1.form_specs import (
@@ -36,7 +36,7 @@ from cmk.rulesets.v1.rule_specs import CheckParameters, HostAndItemCondition, To
 
 def _parameter_form_m365_service_health() -> Dictionary:
     return Dictionary(
-        title=Title("Microsoft 365 Service Health"),
+        title=Title("Check parameters"),
         help_text=Help(
             "Check parameters for the Microsoft 365 service health issues. "
             "Each Microsoft 365 service can have its own set of parameters. "
@@ -45,7 +45,7 @@ def _parameter_form_m365_service_health() -> Dictionary:
         elements={
             "incident": DictElement(
                 parameter_form=ServiceState(
-                    title=Title("Severity Level Incident"),
+                    title=Title("Severity level incident"),
                     help_text=Help(
                         "Set the severity level of the issue type incident. The default severity "
                         "level is critical."
@@ -55,7 +55,7 @@ def _parameter_form_m365_service_health() -> Dictionary:
             ),
             "advisory": DictElement(
                 parameter_form=ServiceState(
-                    title=Title("Severity Level Advisory"),
+                    title=Title("Severity level advisory"),
                     help_text=Help(
                         "Set the severity level of the issue type advisory. The default severity "
                         "level is warning."

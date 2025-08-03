@@ -17,18 +17,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# This Checkmk plugin (Special Agent) retrieves information from Microsoft 365 using the Microsoft
-# Graph API. The plugin can be used to monitor the group-based licensing, service health and
-# licenses of Microsoft 365 services.
-
+# CHECKMK SPECIAL AGENT: Microsoft 365
+#
+# This script retrieves information about Microsoft 365 using the Microsoft Graph API.
+# This file is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
 import sys
 import argparse
 import json
 from pathlib import Path
-from typing import Dict, List, TypedDict
+from typing import TypedDict
 
 import requests
 
@@ -37,46 +37,46 @@ from cmk.utils.http_proxy_config import deserialize_http_proxy_config, HTTPProxy
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Checkmk special agent for Microsoft 365",
+    )
     parser.add_argument(
-        "--tenant-id", required=True, help="The unique ID from the Microsoft Entra tenant."
+        "--tenant-id",
+        required=True,
+        help="Microsoft Entra tenant ID",
     )
     parser.add_argument(
         "--app-id",
         required=True,
-        help="The App ID of the Microsoft Entra app registration for Microsoft Graph API requests.",
+        help="Application (client) ID of the Microsoft Entra app registration",
     )
     parser.add_argument(
         "--app-secret",
         required=True,
-        help="The client secret from the Microsoft Entra app registration.",
-    )
-    parser.add_argument(
-        "--proxy",
-        required=False,
         help=(
-            "The HTTP proxy used to connect to the Microsoft Graph API. If not set, the "
-            "environment settings will be used."
+            "Password store reference of the application (client) secret "
+            "(e.g., 'secret_id:/omd/sites/<site>/var/check_mk/passwords_merged')"
         ),
     )
     parser.add_argument(
         "--services-to-monitor",
         required=False,
         help=(
-            "Comma-separated list of Microsoft Entra services you want to monitor. "
-            "Possible values: m365_group_based_licensing, m365_service_health, m365_licenses"
+            "Comma-separated services to monitor (m365_group_based_licensing, m365_service_health, "
+            "m365_licenses)"
         ),
+    )
+    parser.add_argument(
+        "--proxy",
+        required=False,
+        help="HTTP proxy (FROM_ENVIRONMENT, NO_PROXY, or URL) (default: environment settings)",
     )
     parser.add_argument(
         "--timeout",
         required=False,
         type=float,
         default=10.0,
-        help=(
-            "Define a custom timeout in seconds to use for each API request. The "
-            "timeout is used for token request and any service that should be "
-            "monitored. The default timeout is 10s."
-        ),
+        help="API request timeout in seconds (default: %(default)s)",
     )
 
     return parser.parse_args()
@@ -152,7 +152,7 @@ class Group(TypedDict):
 
 def get_m365_group_based_licensing(
     token: str, timeout: float, proxy: HTTPProxyConfig
-) -> List[Group]:
+) -> list[Group]:
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/groups?$filter=hasMembersWithLicenseErrors+eq+true"
         "&$select=displayName,id"
@@ -189,7 +189,7 @@ def get_m365_group_based_licensing(
 
     m365_groups = m365_group_based_licensing_response.json().get("value", [])
 
-    group_list: List[Group] = [
+    group_list: list[Group] = [
         {
             "group_id": group["id"],
             "group_name": group["displayName"],
@@ -211,7 +211,7 @@ class License(TypedDict):
     lic_units_warning: int
 
 
-def get_m365_licenses(token: str, timeout: float, proxy: HTTPProxyConfig) -> List[License]:
+def get_m365_licenses(token: str, timeout: float, proxy: HTTPProxyConfig) -> list[License]:
     m365_licenses_url = (
         "https://graph.microsoft.com/v1.0/subscribedSkus"
         "?$select=skuId,skuPartNumber,capabilityStatus,consumedUnits,prepaidUnits"
@@ -248,7 +248,7 @@ def get_m365_licenses(token: str, timeout: float, proxy: HTTPProxyConfig) -> Lis
 
     m365_licenses = m365_licenses_response.json().get("value", [])
 
-    license_list: List[License] = [
+    license_list: list[License] = [
         {
             "lic_sku_id": license["skuId"],
             "lic_sku_name": license["skuPartNumber"],
@@ -277,12 +277,12 @@ class ServiceIssue(TypedDict):
 class MicrosoftService(TypedDict):
     service_name: str
     service_status: str
-    service_issues: List[ServiceIssue]
+    service_issues: list[ServiceIssue]
 
 
 def get_m365_service_health(
     token: str, timeout: float, proxy: HTTPProxyConfig
-) -> List[MicrosoftService]:
+) -> list[MicrosoftService]:
     m365_health_overview_url = (
         "https://graph.microsoft.com/v1.0/admin/serviceAnnouncement/"
         "healthOverviews?$select=service,status"
@@ -357,7 +357,7 @@ def get_m365_service_health(
 
     m365_health_issues = m365_health_issues_response.json().get("value", [])
 
-    issues_by_service: Dict[str, List[ServiceIssue]] = {}
+    issues_by_service: dict[str, list[ServiceIssue]] = {}
     for issue in m365_health_issues:
         service_name = issue["service"]
 
@@ -374,7 +374,7 @@ def get_m365_service_health(
             }
         )
 
-    service_list: List[MicrosoftService] = []
+    service_list: list[MicrosoftService] = []
     for service in m365_health_overview:
         service_name = service["service"]
         service_list.append(
