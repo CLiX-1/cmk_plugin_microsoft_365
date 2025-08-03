@@ -17,11 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-
 ####################################################################################################
-# The graph parameters are part of the Microsoft 365 special agent (m365).
-# These are used for the check "Microsoft 365 Licenses".
-
+# CHECKMK METRICS & GRAPHS: Microsoft 365
+#
+# This file defines the Checkmk metrics and graphs for the check plug-ins.
+# It is part of the Microsoft 365 special agent (m365).
+####################################################################################################
 
 from cmk.graphing.v1 import Title
 from cmk.graphing.v1.graphs import Graph, MinimalRange
@@ -34,10 +35,14 @@ from cmk.graphing.v1.metrics import (
     Unit,
     WarningOf,
 )
-from cmk.graphing.v1.perfometers import Closed, FocusRange, Perfometer
+from cmk.graphing.v1.perfometers import Closed, FocusRange, Perfometer, Stacked, Open
 
 UNIT_COUNTER = Unit(DecimalNotation(""), StrictPrecision(0))
 UNIT_PERCENTAGE = Unit(DecimalNotation("%"))
+
+# --------------------------------------------------------------------------------------------------
+# Microsoft 365 Licenses
+# --------------------------------------------------------------------------------------------------
 
 metric_m365_licenses_available = Metric(
     name="m365_licenses_available",
@@ -112,4 +117,56 @@ perfometer_m365_licenses_consumed_pct = Perfometer(
     name="m365_licenses_consumed_pct",
     focus_range=FocusRange(Closed(0), Closed(100)),
     segments=["m365_licenses_consumed_pct"],
+)
+
+# --------------------------------------------------------------------------------------------------
+# Microsoft 365 Service Health
+# --------------------------------------------------------------------------------------------------
+
+metric_m365_service_health_count_incident = Metric(
+    name="m365_service_health_count_incident",
+    title=Title("Incident"),
+    unit=UNIT_COUNTER,
+    color=Color.RED,
+)
+
+metric_m365_service_health_count_advisory = Metric(
+    name="m365_service_health_count_advisory",
+    title=Title("Advisory"),
+    unit=UNIT_COUNTER,
+    color=Color.YELLOW,
+)
+
+graph_m365_service_health_count = Graph(
+    name="m365_service_health_count",
+    title=Title("M365 service issues"),
+    minimal_range=MinimalRange(0, 5),
+    simple_lines=[
+        "m365_service_health_count_incident",
+        "m365_service_health_count_advisory",
+    ],
+    optional=[
+        "m365_service_health_count_incident",
+        "m365_service_health_count_advisory",
+    ],
+)
+
+perfometer_m365_service_health_count = Stacked(
+    name="name",
+    lower=Perfometer(
+        name="advisory",
+        focus_range=FocusRange(
+            Closed(0),
+            Open(5),
+        ),
+        segments=["m365_service_health_count_advisory"],
+    ),
+    upper=Perfometer(
+        name="incident",
+        focus_range=FocusRange(
+            Closed(0),
+            Open(5),
+        ),
+        segments=["m365_service_health_count_incident"],
+    ),
 )
