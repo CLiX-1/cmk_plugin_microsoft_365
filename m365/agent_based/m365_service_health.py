@@ -132,6 +132,10 @@ def check_m365_service_health(
             f"Status: {m365_service.service_status}"
         )
 
+        health_issue_base_url = (
+            "https://admin.microsoft.com/Adminportal/Home#/servicehealth/:/alerts/"
+        )
+
         # Build a list of health issue details to be displayed in the check result details.
         result_details_list = []
         for issue in m365_service.service_issues:
@@ -143,10 +147,10 @@ def check_m365_service_health(
 
             issue_details_list = "\n".join(
                 [
-                    f"Start time: {issue_start_render}",
-                    f" - Type: {issue.issue_classification.capitalize()}",
-                    f" - Feature: {issue.issue_feature}",
-                    f" - Title: {issue.issue_title} ({issue.issue_id})",
+                    f"{issue.issue_classification.upper()} ({issue.issue_feature}): {issue.issue_id}",
+                    f" - Title: {issue.issue_title}",
+                    f" - Start time: {issue_start_render}",
+                    f" - Issue URL: {health_issue_base_url}{issue.issue_id}",
                 ]
             )
             result_details_list.append(issue_details_list)
