@@ -1,6 +1,6 @@
 title: Microsoft 365: Service Health
 agents: special
-catalog: cloud/microsoft
+catalog: cloud/misc
 license: GPLv2
 distribution: Christopher Pommer
 description:
